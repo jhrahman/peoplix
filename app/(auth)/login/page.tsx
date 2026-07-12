@@ -3,9 +3,9 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export default function LoginPage() {
   return (
-    <div className="flex flex-1 flex-col bg-gradient-to-br from-zinc-100 via-white to-zinc-200 dark:from-zinc-950 dark:via-black dark:to-zinc-900">
+    <div className="app-background flex flex-1 flex-col">
       <header className="flex items-center justify-between px-6 py-4">
-        <span className="text-lg font-semibold tracking-tight">Peoplix</span>
+        <span className="text-lg font-heading font-semibold tracking-tight">Peoplix</span>
         <ThemeToggle />
       </header>
 

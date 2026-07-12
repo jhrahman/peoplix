@@ -150,8 +150,18 @@ CLAUDE.md           → project conventions for AI-assisted development
 
 ## 6. Design System
 - **Base components:** Tailwind CSS + shadcn/ui
-- **Glassmorphism pattern:** applied to cards/panels, e.g.
-  `backdrop-blur-md bg-white/10 dark:bg-black/20 border border-white/20`
+- **Typography:** Plus Jakarta Sans for body/UI text (soft, rounded, modern), Outfit for headings
+  (`font-heading`) — a geometric, slightly more eye-catching pairing than a default system sans.
+- **Glassmorphism, two flavors:**
+  - **Light glass:** soft, airy — translucent white surfaces (`bg-card` ~60% opacity) over a
+    faint multi-stop radial-gradient background, subtle indigo-tinted shadows.
+  - **Dark "ash glass":** charcoal/graphite base (never pure black), translucent zinc-toned
+    surfaces (`bg-card` ~40-50% opacity), soft violet-glow accents rather than harsh contrast.
+  - Both share one accent color (indigo/violet) for primary actions, focus rings, active nav
+    state, and badges, so light/dark read as the same product rather than two reskins.
+- **Interactive elements:** buttons/cards/nav items get hover/active affordances (lift, glow,
+  brightness, or press-down translate) — nothing should look static under a pointer. Prefer
+  Tailwind transitions over adding an animation library; keep motion subtle (150-200ms).
 - **Theme:** `next-themes` for light/dark toggle, CSS variables for palette
 - **Responsiveness:** Tailwind breakpoints throughout; sidebar collapses to a bottom nav / drawer on mobile
 

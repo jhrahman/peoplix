@@ -9,6 +9,15 @@ Peoplix is a role-based HR management web app. Full plan: [hr-app-plan.md](hr-ap
 - Tailwind CSS + shadcn/ui, glassmorphism + light/dark theme (`next-themes`)
 - Vercel hosting, GitHub Actions CI/CD
 
+## Design system
+- Typography: Plus Jakarta Sans (body/UI), Outfit (`font-heading`, headings only). Don't reach for a third font.
+- Two glass flavors sharing one indigo/violet accent: airy translucent-white "light glass" and charcoal-based
+  "dark ash glass" (never pure black). Full rationale in plan §6 — read it before touching `globals.css` or `Card`.
+- `Card` is glass by default (translucent `bg-card` + `backdrop-blur`) — don't re-add manual `glass-panel` classes
+  to `<Card>` usages; `glass-panel` is only for non-Card containers (`<aside>`, `<header>`, raw wrapper divs).
+- Interactive elements (buttons, nav items, clickable cards) need a hover/active affordance - lift, glow, or
+  brightness change, 150-200ms Tailwind transition. No new animation library for this.
+
 ## Folder conventions
 - `/app/(auth)`, `/app/(dashboard)/...` — route groups per plan §4
 - `/app/api/*/route.ts` — REST endpoints, one resource per folder

@@ -8,7 +8,7 @@ export function Navbar({ profile }: { profile: Profile }) {
     <header className="glass-panel flex items-center justify-between rounded-2xl px-4 py-3">
       <div className="flex items-center gap-2">
         <MobileNav role={profile.role} />
-        <span className="font-semibold tracking-tight md:hidden">Peoplix</span>
+        <span className="font-heading font-semibold tracking-tight md:hidden">Peoplix</span>
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />

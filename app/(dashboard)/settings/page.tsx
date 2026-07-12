@@ -21,7 +21,7 @@ export default async function SettingsPage() {
   if (!profile) return null;
 
   return (
-    <Card className="glass-panel max-w-lg">
+    <Card className="max-w-lg">
       <CardHeader>
         <CardTitle>Your profile</CardTitle>
       </CardHeader>

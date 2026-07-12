@@ -30,7 +30,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col gap-4 bg-gradient-to-br from-zinc-100 via-white to-zinc-200 p-4 dark:from-zinc-950 dark:via-black dark:to-zinc-900 md:flex-row">
+    <div className="app-background flex min-h-screen flex-1 flex-col gap-4 p-4 md:flex-row">
       <Sidebar role={profile.role} />
       <div className="flex flex-1 flex-col gap-4">
         <Navbar profile={profile} />

@@ -25,7 +25,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <Card className="glass-panel">
+      <Card>
         <CardHeader>
           <CardTitle>Getting started</CardTitle>
         </CardHeader>

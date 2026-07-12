@@ -20,10 +20,10 @@ export function SidebarNav({ role }: { role: UserRole }) {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
               active
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                ? "bg-gradient-to-r from-primary to-primary/80 text-primary-foreground shadow-[0_4px_16px_-4px] shadow-primary/50"
+                : "text-muted-foreground hover:translate-x-0.5 hover:bg-accent hover:text-accent-foreground",
             )}
           >
             <Icon className="h-4 w-4" />

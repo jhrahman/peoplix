@@ -30,7 +30,7 @@ export default async function EmployeesPage() {
     .returns<Profile[]>();
 
   return (
-    <Card className="glass-panel">
+    <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Employees</CardTitle>
         <EmployeeFormDialog

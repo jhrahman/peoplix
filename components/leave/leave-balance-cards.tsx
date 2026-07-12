@@ -15,12 +15,12 @@ export function LeaveBalanceCards({ balance }: { balance: LeaveBalance }) {
         const usedValue = balance[used] as number;
         const remaining = totalValue - usedValue;
         return (
-          <Card key={label} className="glass-panel">
+          <Card key={label} className="glass-interactive">
             <CardHeader>
               <CardTitle className="text-sm text-muted-foreground">{label} leave</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold tracking-tight">
+              <p className="text-2xl font-semibold tracking-tight text-primary">
                 {remaining}
                 <span className="text-sm font-normal text-muted-foreground"> / {totalValue} left</span>
               </p>

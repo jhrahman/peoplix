@@ -48,7 +48,7 @@ export default async function LeavePage() {
     <div className="space-y-6">
       <LeaveBalanceCards balance={balance} />
 
-      <Card className="glass-panel">
+      <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle>My leave requests</CardTitle>
           <ApplyLeaveDialog />
@@ -59,7 +59,7 @@ export default async function LeavePage() {
       </Card>
 
       {isStaff && (
-        <Card className="glass-panel">
+        <Card>
           <CardHeader>
             <CardTitle>Approvals</CardTitle>
           </CardHeader>
