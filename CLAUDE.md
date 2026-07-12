@@ -11,8 +11,10 @@ Peoplix is a role-based HR management web app. Full plan: [hr-app-plan.md](hr-ap
 
 ## Design system
 - Typography: Plus Jakarta Sans (body/UI), Outfit (`font-heading`, headings only). Don't reach for a third font.
-- Two glass flavors sharing one indigo/violet accent: airy translucent-white "light glass" and charcoal-based
-  "dark ash glass" (never pure black). Full rationale in plan §6 — read it before touching `globals.css` or `Card`.
+- Two glass flavors sharing one teal/green accent (seeded from `#0d8a82`): airy translucent-white "light glass"
+  and charcoal-based "dark ash glass" (never pure black). Full rationale in plan §6 — read it before touching
+  `globals.css` or `Card`. The accent lives entirely in CSS variables (`--primary`, `--ring`, etc.) — reference
+  those tokens (`text-primary`, `bg-primary`, `ring-ring`), never a hardcoded Tailwind color like `bg-indigo-600`.
 - `Card` is glass by default (translucent `bg-card` + `backdrop-blur`) — don't re-add manual `glass-panel` classes
   to `<Card>` usages; `glass-panel` is only for non-Card containers (`<aside>`, `<header>`, raw wrapper divs).
 - Interactive elements (buttons, nav items, clickable cards) need a hover/active affordance - lift, glow, or

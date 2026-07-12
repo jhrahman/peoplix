@@ -154,11 +154,13 @@ CLAUDE.md           → project conventions for AI-assisted development
   (`font-heading`) — a geometric, slightly more eye-catching pairing than a default system sans.
 - **Glassmorphism, two flavors:**
   - **Light glass:** soft, airy — translucent white surfaces (`bg-card` ~60% opacity) over a
-    faint multi-stop radial-gradient background, subtle indigo-tinted shadows.
+    faint multi-stop radial-gradient background, subtle teal-tinted shadows.
   - **Dark "ash glass":** charcoal/graphite base (never pure black), translucent zinc-toned
-    surfaces (`bg-card` ~40-50% opacity), soft violet-glow accents rather than harsh contrast.
-  - Both share one accent color (indigo/violet) for primary actions, focus rings, active nav
-    state, and badges, so light/dark read as the same product rather than two reskins.
+    surfaces (`bg-card` ~40-50% opacity), soft teal-glow accents rather than harsh contrast.
+  - Both share one accent color — a teal/green seeded from `#0d8a82`
+    (`oklch(0.57 0.10 188)` light / `oklch(0.72 0.13 188)` dark) — for primary actions, focus
+    rings, active nav state, and badges, so light/dark read as the same product rather than two
+    reskins.
 - **Interactive elements:** buttons/cards/nav items get hover/active affordances (lift, glow,
   brightness, or press-down translate) — nothing should look static under a pointer. Prefer
   Tailwind transitions over adding an animation library; keep motion subtle (150-200ms).
