@@ -59,7 +59,7 @@ export default async function LeavePage() {
       <LeaveBalanceCards balance={balance} />
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>My leave requests</CardTitle>
           <ApplyLeaveDialog />
         </CardHeader>
@@ -70,7 +70,7 @@ export default async function LeavePage() {
 
       {isStaff && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Approvals</CardTitle>
             <LeaveImportExport requests={pendingApprovals} />
           </CardHeader>

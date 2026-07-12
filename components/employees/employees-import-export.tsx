@@ -59,7 +59,7 @@ async function importRow(data: EmployeeImportRow) {
 
 export function EmployeesImportExport({ employees }: { employees: Profile[] }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <ImportDialog
         resourceLabel="employees"
         templateColumns={COLUMNS}

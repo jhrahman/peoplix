@@ -28,9 +28,9 @@ export default async function HolidaysPage() {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Holidays</CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <SeedDefaultHolidaysButton />
           {isStaff && (
             <>

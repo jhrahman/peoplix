@@ -89,7 +89,7 @@ export function LeaveImportExport({
   }));
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <ImportDialog
         resourceLabel="leave requests"
         templateColumns={IMPORT_COLUMNS}

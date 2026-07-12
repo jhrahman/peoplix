@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { LeaveBalance } from "@/lib/types";
 
 const ROWS: { label: string; total: keyof LeaveBalance; used: keyof LeaveBalance }[] = [
@@ -14,15 +15,33 @@ export function LeaveBalanceCards({ balance }: { balance: LeaveBalance }) {
         const totalValue = balance[total] as number;
         const usedValue = balance[used] as number;
         const remaining = totalValue - usedValue;
+        const overLimit = remaining < 0;
         return (
           <Card key={label} className="glass-interactive">
             <CardHeader>
               <CardTitle className="text-sm text-muted-foreground">{label} leave</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold tracking-tight text-primary">
-                {remaining}
-                <span className="text-sm font-normal text-muted-foreground"> / {totalValue} left</span>
+              <p
+                className={cn(
+                  "text-2xl font-semibold tracking-tight",
+                  overLimit ? "text-destructive" : "text-primary",
+                )}
+              >
+                {overLimit ? (
+                  <>
+                    {Math.abs(remaining)}
+                    <span className="text-sm font-normal text-muted-foreground"> days over</span>
+                  </>
+                ) : (
+                  <>
+                    {remaining}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {" "}
+                      / {totalValue} left
+                    </span>
+                  </>
+                )}
               </p>
             </CardContent>
           </Card>

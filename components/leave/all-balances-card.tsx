@@ -34,7 +34,7 @@ export function AllBalancesCard({
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center justify-between">
+      <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>All balances</CardTitle>
         <ExportMenu filenameBase="leave-balances" rows={rows} columns={COLUMNS} />
       </CardHeader>
