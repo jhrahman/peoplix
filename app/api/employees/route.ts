@@ -60,7 +60,10 @@ export async function POST(request: Request) {
 
   await ensureLeaveBalance(admin, created.user.id, new Date().getFullYear());
 
-  const { error: resetError } = await admin.auth.resetPasswordForEmail(email);
+  const { origin } = new URL(request.url);
+  const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/reset-password`,
+  });
   if (resetError) {
     console.error("Failed to send password setup email:", resetError.message);
   }

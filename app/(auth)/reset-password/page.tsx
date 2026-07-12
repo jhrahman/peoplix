@@ -1,0 +1,25 @@
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+
+export default function ResetPasswordPage() {
+  return (
+    <div className="app-background flex flex-1 flex-col">
+      <header className="flex items-center justify-between px-6 py-4">
+        <span className="text-lg font-heading font-semibold tracking-tight">Peoplix</span>
+        <ThemeToggle />
+      </header>
+
+      <main className="flex flex-1 items-center justify-center px-6">
+        <div className="glass-panel w-full max-w-sm rounded-2xl p-8">
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">Set your password</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              People management, simplified.
+            </p>
+          </div>
+          <ResetPasswordForm />
+        </div>
+      </main>
+    </div>
+  );
+}

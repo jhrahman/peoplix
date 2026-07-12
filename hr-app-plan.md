@@ -140,11 +140,21 @@ CLAUDE.md           → project conventions for AI-assisted development
 
 ## 5. Auth & Role Flow
 - Supabase Auth (email/password) for login
-- `middleware.ts` checks session on every protected route, redirects to `/login` if absent
+- `proxy.ts` (`lib/supabase/middleware.ts`) checks session on every protected route, redirects to `/login` if absent
 - Role read from `profiles.role`, used to:
   - Conditionally render nav items/pages in the UI
   - Gate API routes server-side (e.g. only HR/Admin can `PATCH /api/leave/[id]` to approve/reject)
-- Admin creates employee accounts (no public sign-up) via a dedicated "Add Employee" screen using the Supabase Admin API
+- Admin creates employee accounts (**no public sign-up**) via a dedicated "Add Employee" screen using the Supabase Admin API
+- **Invite / forgot-password flow** (`/reset-password`): when Admin/HR adds an employee, Supabase
+  emails them a recovery link (`resetPasswordForEmail`) pointing at `/reset-password`, which reads
+  the `access_token`/`refresh_token` out of the URL hash client-side, calls `setSession`, then lets
+  them set a password via `updateUser`. The same page and mechanism power "Forgot password?" on
+  the login page for existing users — it's self-service *credential recovery* for an account
+  Admin/HR already created, not open registration, so it doesn't reopen the no-public-sign-up rule.
+  - **Requires one Supabase dashboard step**: add your app's origin(s) to
+    **Authentication → URL Configuration → Redirect URLs** (e.g. `http://localhost:3000/**` for
+    dev, plus your Vercel URL once deployed) — Supabase refuses to redirect to a URL that isn't
+    allow-listed there.
 
 ---
 
