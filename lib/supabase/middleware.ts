@@ -33,6 +33,13 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
+  const isApiPath = pathname.startsWith("/api/");
+
+  // API routes enforce their own auth (requireRole) and must return JSON,
+  // not an HTML redirect to /login - only the page-rendering paths redirect.
+  if (isApiPath) {
+    return response;
+  }
 
   if (!user && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);
