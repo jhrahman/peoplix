@@ -4,6 +4,7 @@ import type { Holiday, Profile } from "@/lib/types";
 import { HolidaysList } from "@/components/holidays/holidays-list";
 import { HolidayFormDialog } from "@/components/holidays/holiday-form-dialog";
 import { HolidaysImportExport } from "@/components/holidays/holidays-import-export";
+import { SeedDefaultHolidaysButton } from "@/components/holidays/seed-default-holidays-button";
 
 export default async function HolidaysPage() {
   const supabase = await createClient();
@@ -31,6 +32,7 @@ export default async function HolidaysPage() {
         <CardTitle>Holidays</CardTitle>
         {isStaff && (
           <div className="flex items-center gap-2">
+            <SeedDefaultHolidaysButton />
             <HolidaysImportExport holidays={holidays ?? []} />
             <HolidayFormDialog />
           </div>
