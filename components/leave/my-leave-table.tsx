@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import type { LeaveRequest, LeaveStatus } from "@/lib/types";
 import { leaveDays } from "@/lib/leave";
+import { ApplyLeaveDialog } from "@/components/leave/apply-leave-dialog";
 
 const STATUS_VARIANT: Record<LeaveStatus, "secondary" | "default" | "destructive"> = {
   pending: "secondary",
@@ -69,15 +70,18 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequest[] }) {
               </TableCell>
               <TableCell className="text-right">
                 {request.status === "pending" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={cancelingId === request.id}
-                    onClick={() => handleCancel(request.id)}
-                    data-testid={`leave-cancel-${request.id}`}
-                  >
-                    Cancel
-                  </Button>
+                  <div className="flex justify-end gap-1">
+                    <ApplyLeaveDialog request={request} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={cancelingId === request.id}
+                      onClick={() => handleCancel(request.id)}
+                      data-testid={`leave-cancel-${request.id}`}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 )}
               </TableCell>
             </TableRow>

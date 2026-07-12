@@ -9,11 +9,19 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
+  const body = await request.json();
+
+  // Two distinct actions share this route, disambiguated by payload shape:
+  // a `status` field means Admin/HR review; anything else means the owning
+  // employee correcting a still-pending request they submitted by mistake.
+  if (!("status" in body)) {
+    return handleSelfEdit(id, body);
+  }
+
   const auth = await requireRole(["admin", "hr"]);
   if ("error" in auth) return auth.error;
 
-  const { id } = await params;
-  const body = await request.json();
   const { status } = body;
 
   if (!["approved", "rejected"].includes(status)) {
@@ -65,6 +73,77 @@ export async function PATCH(
   }
 
   return NextResponse.json({ data: updated });
+}
+
+// Lets an employee correct a request they submitted by mistake - only while it's
+// still pending (before Admin/HR has acted on it), and only their own.
+async function handleSelfEdit(id: string, body: Record<string, unknown>) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("leave_requests")
+    .select("*")
+    .eq("id", id)
+    .single<LeaveRequest>();
+
+  if (fetchError || !existing) {
+    return NextResponse.json({ error: "Leave request not found" }, { status: 404 });
+  }
+
+  if (existing.employee_id !== user.id) {
+    return NextResponse.json(
+      { error: "You can only edit your own requests" },
+      { status: 403 },
+    );
+  }
+
+  if (existing.status !== "pending") {
+    return NextResponse.json(
+      { error: "Only pending requests can be edited" },
+      { status: 400 },
+    );
+  }
+
+  const { leave_type, start_date, end_date, reason } = body as {
+    leave_type?: string;
+    start_date?: string;
+    end_date?: string;
+    reason?: string;
+  };
+
+  if (!leave_type || !start_date || !end_date) {
+    return NextResponse.json(
+      { error: "leave_type, start_date, and end_date are required" },
+      { status: 400 },
+    );
+  }
+
+  if (end_date < start_date) {
+    return NextResponse.json(
+      { error: "end_date must be on or after start_date" },
+      { status: 400 },
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("leave_requests")
+    .update({ leave_type, start_date, end_date, reason: reason || null })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ data });
 }
 
 export async function DELETE(

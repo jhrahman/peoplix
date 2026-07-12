@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import type { OvertimeRequest, OvertimeStatus } from "@/lib/types";
 import { formatOvertimeHours } from "@/lib/overtime";
+import { LogOvertimeDialog } from "@/components/overtime/log-overtime-dialog";
 
 const STATUS_VARIANT: Record<OvertimeStatus, "secondary" | "default" | "destructive"> = {
   pending: "secondary",
@@ -65,15 +66,18 @@ export function MyOvertimeTable({ requests }: { requests: OvertimeRequest[] }) {
               </TableCell>
               <TableCell className="text-right">
                 {request.status === "pending" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={cancelingId === request.id}
-                    onClick={() => handleCancel(request.id)}
-                    data-testid={`overtime-cancel-${request.id}`}
-                  >
-                    Cancel
-                  </Button>
+                  <div className="flex justify-end gap-1">
+                    <LogOvertimeDialog entry={request} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={cancelingId === request.id}
+                      onClick={() => handleCancel(request.id)}
+                      data-testid={`overtime-cancel-${request.id}`}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 )}
               </TableCell>
             </TableRow>

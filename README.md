@@ -26,13 +26,13 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 - **Dashboard** — at-a-glance stat tiles and charts for hours worked, overtime, leave balance, upcoming holidays, and account role, plus Admin/HR-only approval-queue counters.
 - **Employee management** — Admin/HR can add, edit, and remove employees; assign roles; department/designation fields.
 - **Team directory** — read-only, searchable (name/department/designation/email) profile listing visible to **every** role — unlike the Employees page, any employee can look up a colleague's contact details.
-- **Leave management** — apply for Casual/Sick/Annual leave, live day-count preview, Admin/HR approval queue, automatic balance deduction on approval, per-employee balance view.
-- **Overtime tracking** — log overtime manually (date + hours in 0.5h steps, one entry per day), Admin-only approval (HR can view but not approve), a per-employee summary (pending/approved/rejected) and matching dashboard widgets.
+- **Leave management** — apply for Casual/Sick/Annual leave, live day-count preview, Admin/HR approval queue, automatic balance deduction on approval, per-employee balance view, and self-service edit/cancel while a request is still pending (fix a typo without waiting on HR).
+- **Overtime tracking** — log overtime manually (date + hours in 0.5h steps, one entry per day), Admin-only approval (HR can view but not approve), self-service edit/cancel while still pending, a per-employee summary (pending/approved/rejected) and matching dashboard widgets.
 - **Holiday calendar** — shared company holiday list, recurring-holiday support, and a one-click "generate default Bangladesh public holidays for this year" recovery action available to any signed-in user.
 - **Attendance** — one-click check-in/out with all times shown in Bangladesh Standard Time (12-hour AM/PM, regardless of the viewer's own device timezone), automatic duration calculation, and a self-service manual override/correction (e.g. fix an accidental early checkout) — no approval step required.
 - **Import / Export** — CSV and XLSX for Employees, Leave requests, and Holidays, with a downloadable template, row-by-row validation preview, and per-row import status.
 - **Danger Zone** — Admin-only, type-to-confirm wipe of all leave/holiday/attendance/overtime data; employee accounts are never touched.
-- **Polish** — page-transition loading states, responsive/mobile layout, empty states everywhere, `data-testid` attributes on every interactive element for automated testing.
+- **Polish** — page-transition loading states, spinner feedback on in-flight approve/reject actions, a proper pointer cursor on every button, responsive/mobile layout, empty states everywhere, `data-testid` attributes on every interactive element for automated testing.
 - **Brand assets** — code-generated favicon, apple-touch icon, and Open Graph image (teal gradient mark, no external design tool).
 
 ## 🧱 Stack

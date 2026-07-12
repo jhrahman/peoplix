@@ -24,6 +24,20 @@ App URL: https://peoplix-hr.vercel.app/leave
 | 11 | Submit two overlapping leave requests for the same employee | Two requests with overlapping date ranges | Verify whether the system allows, warns, or blocks overlapping requests (document actual behavior) |
 | 12 | View "My leave requests" table after submitting multiple requests | 2+ submitted requests | Table lists all requests with type, dates, day count, and current status, most recent first |
 
+## Edit / override a pending request
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 13 | Hover over the edit (pencil) icon on a pending request | Mouse hover | Cursor displays as a pointer/hand, not the default arrow |
+| 14 | Click the edit (pencil) icon on a Pending request | Select a pending request | Dialog opens titled "Edit leave request" with Leave type, Start date, End date, and Reason pre-filled with the request's current values |
+| 15 | Check for an edit (pencil) icon on an Approved or Rejected request | Request with status Approved or Rejected | No edit icon is shown — only Pending requests can be edited |
+| 16 | Change the Leave type and Reason in the edit dialog, then save | Leave type: Sick (was Casual), Reason: "Corrected — actually sick leave" | Dialog closes; the same row updates in place with the new type and reason, status remains "Pending" |
+| 17 | Change the Start/End dates in the edit dialog to fix a typo, then save | Start: 2026-08-11 (was 2026-08-10) | Row updates with the corrected dates and recalculated day count |
+| 18 | Clear the Start/End dates in the edit dialog and try to save | Dates: (blank) | Browser's required-field validation blocks submission |
+| 19 | Attempt to edit another employee's leave request via direct API call (bypassing the UI) | `PATCH /api/leave/{id}` with an edit-shaped body, using a different employee's request id | Server rejects with `403 Forbidden` ("You can only edit your own requests") |
+| 20 | Attempt to edit a request after it has been Approved or Rejected via direct API call | `PATCH /api/leave/{id}` with an edit-shaped body, on an already-reviewed request | Server rejects with "Only pending requests can be edited" |
+| 21 | Open the edit dialog, then click outside/close without saving | N/A | No changes are applied; row remains as it was before opening |
+
 ## Approvals (HR/Admin only)
 
 | # | Action | Test Data | Expected Result |

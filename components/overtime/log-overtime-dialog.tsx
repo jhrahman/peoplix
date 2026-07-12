@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Info } from "lucide-react";
+import { Pencil, Plus, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,25 +24,30 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OVERTIME_HOUR_OPTIONS, formatOvertimeHours } from "@/lib/overtime";
 import { todayInDhaka } from "@/lib/attendance";
+import type { OvertimeRequest } from "@/lib/types";
 
-export function LogOvertimeDialog() {
+export function LogOvertimeDialog({ entry }: { entry?: OvertimeRequest }) {
   const router = useRouter();
+  const isEdit = Boolean(entry);
   const today = todayInDhaka();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [date, setDate] = useState(today);
-  const [hours, setHours] = useState("1");
-  const [reason, setReason] = useState("");
+  const [date, setDate] = useState(entry?.date ?? today);
+  const [hours, setHours] = useState(String(entry?.hours ?? 1));
+  const [reason, setReason] = useState(entry?.reason ?? "");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/overtime", {
-      method: "POST",
+    const url = isEdit ? `/api/overtime/${entry!.id}` : "/api/overtime";
+    const method = isEdit ? "PATCH" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date, hours: Number(hours), reason }),
     });
@@ -57,25 +62,42 @@ export function LogOvertimeDialog() {
 
     setLoading(false);
     setOpen(false);
-    setDate(today);
-    setHours("1");
-    setReason("");
+    if (!isEdit) {
+      setDate(today);
+      setHours("1");
+      setReason("");
+    }
     router.refresh();
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" data-testid="overtime-log-trigger">
-          <Plus className="h-4 w-4" />
-          Log overtime
-        </Button>
+        {isEdit ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Edit overtime entry"
+            data-testid={`overtime-edit-trigger-${entry!.id}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button size="sm" data-testid="overtime-log-trigger">
+            <Plus className="h-4 w-4" />
+            Log overtime
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Log overtime</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit overtime entry" : "Log overtime"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4" data-testid="overtime-log-form">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          data-testid={isEdit ? "overtime-edit-form" : "overtime-log-form"}
+        >
           <div className="space-y-2">
             <Label htmlFor="overtime_date">Date</Label>
             <Input
@@ -137,7 +159,7 @@ export function LogOvertimeDialog() {
           )}
           <DialogFooter>
             <Button type="submit" disabled={loading} data-testid="overtime-form-submit">
-              {loading ? "Submitting..." : "Submit"}
+              {loading ? "Saving..." : isEdit ? "Save changes" : "Submit"}
             </Button>
           </DialogFooter>
         </form>

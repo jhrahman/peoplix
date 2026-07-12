@@ -115,6 +115,9 @@ Do not put real passwords, service-role keys, or production secrets in this file
   - `403` — non-staff caller passed `employee_email`
 
 ### PATCH `/api/leave/{id}`
+This route serves two different actions, disambiguated by the request body shape.
+
+**A. Admin/HR review** — body contains `status`:
 - **Auth**: Admin/HR
 - **Path param**: `id` — leave request UUID
 - **Body (JSON)**:
@@ -127,6 +130,22 @@ Do not put real passwords, service-role keys, or production secrets in this file
 - **Errors**:
   - `400` — invalid `status` value, or request is not currently `pending`
   - `401`, `403`
+  - `404` — request not found
+
+**B. Employee self-edit** — body has no `status` field (any other shape is treated as an edit):
+- **Auth**: Session required — must be the request's own owner
+- **Path param**: `id` — leave request UUID
+- **Body (JSON)**:
+  ```json
+  { "leave_type": "sick", "start_date": "2026-08-10", "end_date": "2026-08-11", "reason": "Fixed typo in dates" }
+  ```
+  - Required: `leave_type`, `start_date`, `end_date`; `reason` optional
+- **Behavior**: Lets an employee correct a request they submitted by mistake — **only while it is still `pending`**. Once Admin/HR has approved or rejected it, this is no longer available (matches the Cancel/Delete eligibility rule).
+- **Success (200)**: `{ "data": LeaveRequest }` (updated row)
+- **Errors**:
+  - `400` — missing fields, invalid date range, or the request is no longer `pending`
+  - `401` — not logged in
+  - `403` — caller does not own this request
   - `404` — request not found
 
 ### DELETE `/api/leave/{id}`
@@ -260,6 +279,9 @@ Do not put real passwords, service-role keys, or production secrets in this file
   - `401` — not logged in
 
 ### PATCH `/api/overtime/{id}`
+This route serves two different actions, disambiguated by the request body shape.
+
+**A. Admin review** — body contains `status`:
 - **Auth**: **Admin only** (not HR — HR can view all entries via `GET ?scope=all` but cannot approve/reject)
 - **Path param**: `id` — overtime entry UUID
 - **Body (JSON)**:
@@ -272,6 +294,22 @@ Do not put real passwords, service-role keys, or production secrets in this file
 - **Errors**:
   - `400` — invalid `status` value, or entry is not currently `pending`
   - `401`, `403` (includes HR — this is Admin-only)
+  - `404` — entry not found
+
+**B. Employee self-edit** — body has no `status` field (any other shape is treated as an edit):
+- **Auth**: Session required — must be the entry's own owner
+- **Path param**: `id` — overtime entry UUID
+- **Body (JSON)**:
+  ```json
+  { "date": "2026-07-12", "hours": 1.5, "reason": "Corrected hours" }
+  ```
+  - Required: `date`, `hours`; `reason` optional. Same validation as `POST /api/overtime` (0.5–12 hours in 0.5 steps, not future-dated, one entry per day).
+- **Behavior**: Lets an employee correct an entry they logged by mistake — **only while it is still `pending`**. Once Admin has approved or rejected it, this is no longer available.
+- **Success (200)**: `{ "data": OvertimeRequest }` (updated row)
+- **Errors**:
+  - `400` — missing/invalid fields, entry no longer `pending`, or a duplicate entry for that date
+  - `401` — not logged in
+  - `403` — caller does not own this entry
   - `404` — entry not found
 
 ### DELETE `/api/overtime/{id}`
@@ -320,7 +358,7 @@ the logged-in user's access token — there is nothing under `/api/` to call for
 | DELETE | `/api/employees/{id}` | Admin/HR | Delete employee |
 | GET | `/api/leave` | Session | List leave requests (own, or all with `?scope=all` for staff) |
 | POST | `/api/leave` | Session | Apply for leave (or file on behalf of another employee, staff only) |
-| PATCH | `/api/leave/{id}` | Admin/HR | Approve/reject a pending request |
+| PATCH | `/api/leave/{id}` | Admin/HR (`status` body) or Session (owner, edit body) | Approve/reject a pending request, or self-edit your own pending request |
 | DELETE | `/api/leave/{id}` | Session | Delete own pending request (or staff) |
 | GET | `/api/holidays` | Session | List holidays |
 | POST | `/api/holidays` | Admin/HR | Create holiday |
@@ -332,7 +370,7 @@ the logged-in user's access token — there is nothing under `/api/` to call for
 | PATCH | `/api/attendance/{id}` | Session | Quick check-out, or manual override of check-in/out |
 | GET | `/api/overtime` | Session | List overtime entries (own, or all with `?scope=all` for staff) |
 | POST | `/api/overtime` | Session | Log overtime (self-entry only) |
-| PATCH | `/api/overtime/{id}` | Admin only | Approve/reject a pending overtime entry |
+| PATCH | `/api/overtime/{id}` | Admin only (`status` body) or Session (owner, edit body) | Approve/reject a pending entry, or self-edit your own pending entry |
 | DELETE | `/api/overtime/{id}` | Session | Delete own pending overtime entry (or Admin) |
 | POST | `/api/admin/clear-database` | Admin only | Wipe leave/holiday/attendance/overtime data (not accounts) |
 | — | `/directory` (no API route) | Session | Reads `profiles` directly via Supabase — see §7 |

@@ -32,6 +32,19 @@ App URL: https://peoplix-hr.vercel.app/overtime
 | 14 | Click "Cancel" on a Pending entry | Select a pending entry | Entry is removed from the table |
 | 15 | Check for a "Cancel" action on an Approved or Rejected entry | Entry with status Approved or Rejected | No "Cancel" action is available for non-pending entries |
 
+## Edit / override a pending entry
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 15a | Hover over the edit (pencil) icon on a pending entry | Mouse hover | Cursor displays as a pointer/hand, not the default arrow |
+| 15b | Click the edit (pencil) icon on a Pending entry | Select a pending entry | Dialog opens titled "Edit overtime entry" with Date, Hours, and Reason pre-filled with the entry's current values |
+| 15c | Check for an edit (pencil) icon on an Approved or Rejected entry | Entry with status Approved or Rejected | No edit icon is shown — only Pending entries can be edited |
+| 15d | Change the Hours and Reason in the edit dialog, then save | Hours: 2.5 (was 1), Reason: "Corrected — actual hours worked" | Dialog closes; the same row updates in place with the new hours and reason, status remains "Pending" |
+| 15e | Change the Date in the edit dialog to a date that already has an entry for this employee | Date matching another existing entry | Save is rejected with "You already logged overtime for that date." |
+| 15f | Change the Date in the edit dialog to a future date | Date > today | Date input's max is capped at today; a future date cannot be selected |
+| 15g | Attempt to edit another employee's overtime entry via direct API call (bypassing the UI) | `PATCH /api/overtime/{id}` with an edit-shaped body, using a different employee's entry id | Server rejects with `403 Forbidden` ("You can only edit your own entries") |
+| 15h | Attempt to edit an entry after it has been Approved or Rejected via direct API call | `PATCH /api/overtime/{id}` with an edit-shaped body, on an already-reviewed entry | Server rejects with "Only pending entries can be edited" |
+
 ## Approvals (Admin only)
 
 | # | Action | Test Data | Expected Result |

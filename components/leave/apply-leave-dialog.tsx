@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,19 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { LeaveType } from "@/lib/types";
+import type { LeaveRequest, LeaveType } from "@/lib/types";
 import { leaveDays } from "@/lib/leave";
 
-export function ApplyLeaveDialog() {
+export function ApplyLeaveDialog({ request }: { request?: LeaveRequest }) {
   const router = useRouter();
+  const isEdit = Boolean(request);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [leaveType, setLeaveType] = useState<LeaveType>("casual");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [reason, setReason] = useState("");
+  const [leaveType, setLeaveType] = useState<LeaveType>(request?.leave_type ?? "casual");
+  const [startDate, setStartDate] = useState(request?.start_date ?? "");
+  const [endDate, setEndDate] = useState(request?.end_date ?? "");
+  const [reason, setReason] = useState(request?.reason ?? "");
 
   const days = endDate && startDate && endDate >= startDate
     ? leaveDays(startDate, endDate)
@@ -44,8 +45,11 @@ export function ApplyLeaveDialog() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/leave", {
-      method: "POST",
+    const url = isEdit ? `/api/leave/${request!.id}` : "/api/leave";
+    const method = isEdit ? "PATCH" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         leave_type: leaveType,
@@ -65,25 +69,42 @@ export function ApplyLeaveDialog() {
 
     setLoading(false);
     setOpen(false);
-    setStartDate("");
-    setEndDate("");
-    setReason("");
+    if (!isEdit) {
+      setStartDate("");
+      setEndDate("");
+      setReason("");
+    }
     router.refresh();
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" data-testid="leave-apply-trigger">
-          <Plus className="h-4 w-4" />
-          Apply for leave
-        </Button>
+        {isEdit ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Edit leave request"
+            data-testid={`leave-edit-trigger-${request!.id}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button size="sm" data-testid="leave-apply-trigger">
+            <Plus className="h-4 w-4" />
+            Apply for leave
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Apply for leave</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit leave request" : "Apply for leave"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4" data-testid="leave-apply-form">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          data-testid={isEdit ? "leave-edit-form" : "leave-apply-form"}
+        >
           <div className="space-y-2">
             <Label htmlFor="leave_type">Leave type</Label>
             <Select value={leaveType} onValueChange={(v) => setLeaveType(v as LeaveType)}>
@@ -142,7 +163,7 @@ export function ApplyLeaveDialog() {
           )}
           <DialogFooter>
             <Button type="submit" disabled={loading} data-testid="leave-apply-submit">
-              {loading ? "Submitting..." : "Submit request"}
+              {loading ? "Saving..." : isEdit ? "Save changes" : "Submit request"}
             </Button>
           </DialogFooter>
         </form>
