@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,17 +21,21 @@ type ReviewAction = "approved" | "rejected";
 export function OvertimeApprovalsTable({ requests }: { requests: OvertimeRequestWithEmployee[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<{ id: string; action: ReviewAction } | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleReview(id: string, status: ReviewAction) {
+  function handleReview(id: string, status: ReviewAction) {
     setBusy({ id, action: status });
-    await fetch(`/api/overtime/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+    startTransition(async () => {
+      await fetch(`/api/overtime/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      router.refresh();
     });
-    setBusy(null);
-    router.refresh();
   }
+
+  const rowBusy = (id: string) => isPending && busy?.id === id;
 
   const pending = requests.filter((r) => r.status === "pending");
 
@@ -63,26 +67,26 @@ export function OvertimeApprovalsTable({ requests }: { requests: OvertimeRequest
               <TableCell className="flex justify-end gap-2">
                 <Button
                   size="sm"
-                  disabled={busy?.id === request.id}
+                  disabled={rowBusy(request.id)}
                   onClick={() => handleReview(request.id, "approved")}
                   data-testid={`overtime-approval-approve-${request.id}`}
                 >
-                  {busy?.id === request.id && busy.action === "approved" && (
+                  {rowBusy(request.id) && busy?.action === "approved" && (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   )}
-                  {busy?.id === request.id && busy.action === "approved" ? "Approving..." : "Approve"}
+                  {rowBusy(request.id) && busy?.action === "approved" ? "Approving..." : "Approve"}
                 </Button>
                 <Button
                   size="sm"
                   variant="destructive"
-                  disabled={busy?.id === request.id}
+                  disabled={rowBusy(request.id)}
                   onClick={() => handleReview(request.id, "rejected")}
                   data-testid={`overtime-approval-reject-${request.id}`}
                 >
-                  {busy?.id === request.id && busy.action === "rejected" && (
+                  {rowBusy(request.id) && busy?.action === "rejected" && (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   )}
-                  {busy?.id === request.id && busy.action === "rejected" ? "Rejecting..." : "Reject"}
+                  {rowBusy(request.id) && busy?.action === "rejected" ? "Rejecting..." : "Reject"}
                 </Button>
               </TableCell>
             </TableRow>
