@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { todayInDhaka } from "@/lib/attendance";
+import { isValidOvertimeHours } from "@/lib/overtime";
 import type { Profile } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -15,7 +16,6 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const scope = searchParams.get("scope");
-  const date = searchParams.get("date");
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -26,16 +26,12 @@ export async function GET(request: Request) {
   const isStaff = profile && ["admin", "hr"].includes(profile.role);
 
   let query = supabase
-    .from("attendance")
-    .select("*, employee:profiles!attendance_employee_id_fkey(full_name)")
+    .from("overtime_requests")
+    .select("*, employee:profiles!overtime_requests_employee_id_fkey(full_name)")
     .order("date", { ascending: false });
 
   if (scope !== "all" || !isStaff) {
     query = query.eq("employee_id", user.id);
-  }
-
-  if (date) {
-    query = query.eq("date", date);
   }
 
   const { data, error } = await query;
@@ -47,7 +43,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ data });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -57,26 +53,41 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const today = todayInDhaka();
+  const body = await request.json();
+  const { date, hours, reason } = body;
 
-  const { data: existing } = await supabase
-    .from("attendance")
-    .select("*")
-    .eq("employee_id", user.id)
-    .eq("date", today)
-    .maybeSingle();
+  if (!date || hours === undefined || hours === null || hours === "") {
+    return NextResponse.json({ error: "date and hours are required" }, { status: 400 });
+  }
 
-  if (existing) {
-    return NextResponse.json({ data: existing });
+  const numericHours = Number(hours);
+  if (!isValidOvertimeHours(numericHours)) {
+    return NextResponse.json(
+      { error: "Hours must be between 0.5 and 12, in 0.5 hour increments" },
+      { status: 400 },
+    );
+  }
+
+  if (date > todayInDhaka()) {
+    return NextResponse.json(
+      { error: "Cannot log overtime for a future date" },
+      { status: 400 },
+    );
   }
 
   const { data, error } = await supabase
-    .from("attendance")
-    .insert({ employee_id: user.id, date: today, check_in: new Date().toISOString() })
+    .from("overtime_requests")
+    .insert({ employee_id: user.id, date, hours: numericHours, reason: reason || null })
     .select()
     .single();
 
   if (error) {
+    if (error.code === "23505") {
+      return NextResponse.json(
+        { error: "You already logged overtime for that date." },
+        { status: 400 },
+      );
+    }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 

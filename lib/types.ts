@@ -57,3 +57,17 @@ export type Attendance = {
   check_in: string | null;
   check_out: string | null;
 };
+
+export type OvertimeStatus = "pending" | "approved" | "rejected";
+
+export type OvertimeRequest = {
+  id: string;
+  employee_id: string;
+  date: string;
+  hours: number;
+  reason: string | null;
+  status: OvertimeStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};

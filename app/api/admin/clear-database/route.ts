@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
-const TABLES = ["leave_requests", "leave_balances", "holidays", "attendance"] as const;
+const TABLES = [
+  "leave_requests",
+  "leave_balances",
+  "holidays",
+  "attendance",
+  "overtime_requests",
+] as const;
 
 export async function POST() {
   // Admin only - not HR - matches the Danger Zone visibility rule.

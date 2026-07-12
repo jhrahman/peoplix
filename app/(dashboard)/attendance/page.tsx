@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Attendance, Profile } from "@/lib/types";
+import { todayInDhaka } from "@/lib/attendance";
 import { CheckInOutCard } from "@/components/attendance/check-in-out-card";
 import { AttendanceHistoryTable } from "@/components/attendance/attendance-history-table";
 import { TeamAttendanceToday } from "@/components/attendance/team-attendance-today";
@@ -18,7 +19,7 @@ export default async function AttendancePage() {
     .single<Profile>();
 
   const isStaff = Boolean(profile && ["admin", "hr"].includes(profile.role));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInDhaka();
 
   const { data: todayRecord } = await supabase
     .from("attendance")

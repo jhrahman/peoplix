@@ -64,8 +64,8 @@ export function DangerZone({ isAdmin }: { isAdmin: boolean }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Wipes all leave requests, leave balances, holidays, and attendance records. Employee,
-          HR, and Admin accounts are never touched.
+          Wipes all leave requests, leave balances, holidays, attendance, and overtime records.
+          Employee, HR, and Admin accounts are never touched.
         </p>
 
         <AlertDialog open={open} onOpenChange={setOpen}>
@@ -85,8 +85,8 @@ export function DangerZone({ isAdmin }: { isAdmin: boolean }) {
             <AlertDialogHeader>
               <AlertDialogTitle>Clear all data?</AlertDialogTitle>
               <AlertDialogDescription>
-                This permanently deletes every leave request, leave balance, holiday, and
-                attendance record. This cannot be undone. Type{" "}
+                This permanently deletes every leave request, leave balance, holiday,
+                attendance, and overtime record. This cannot be undone. Type{" "}
                 <span className="font-mono font-semibold text-foreground">{CONFIRM_PHRASE}</span>{" "}
                 to confirm.
               </AlertDialogDescription>

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { buildIsoFromDateAndTime, toLocalTimeInputValue } from "@/lib/attendance";
+import { buildIsoFromDateAndTime, toDhakaTimeInputValue } from "@/lib/attendance";
 import type { Attendance } from "@/lib/types";
 
 export function EditAttendanceDialog({ record }: { record: Attendance }) {
@@ -23,8 +23,8 @@ export function EditAttendanceDialog({ record }: { record: Attendance }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [checkInTime, setCheckInTime] = useState(toLocalTimeInputValue(record.check_in));
-  const [checkOutTime, setCheckOutTime] = useState(toLocalTimeInputValue(record.check_out));
+  const [checkInTime, setCheckInTime] = useState(toDhakaTimeInputValue(record.check_in));
+  const [checkOutTime, setCheckOutTime] = useState(toDhakaTimeInputValue(record.check_out));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +70,7 @@ export function EditAttendanceDialog({ record }: { record: Attendance }) {
           <DialogTitle>Edit attendance — {record.date}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4" data-testid="attendance-edit-form">
+          <p className="text-xs text-muted-foreground">Times are in Bangladesh Standard Time (UTC+6).</p>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="check_in">Check in</Label>

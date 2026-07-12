@@ -41,6 +41,8 @@ No public sign-up. Admin creates employee accounts via Supabase Admin API.
 4. **Bangladesh holiday calendar** — seeded default holidays + Admin/HR can add/edit
 5. **Attendance/check-in** — simple Check-in / Check-out button with timestamps
 6. **Org chart/departments** — simple `department` field on employee profile (no hierarchy tree in v1)
+7. **Overtime tracking** *(ad-hoc, post-v1)* — employees log overtime manually (date + hours,
+   0.5h minimum in 0.5h steps); Admin-only approval (stricter than the usual Admin/HR gate)
 
 ---
 
@@ -100,6 +102,21 @@ No public sign-up. Admin creates employee accounts via Supabase Admin API.
 | date | date | |
 | check_in | timestamp | nullable |
 | check_out | timestamp | nullable |
+
+### `overtime_requests`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| employee_id | uuid | FK → profiles |
+| date | date | must not be in the future |
+| hours | numeric(4,1) | 0.5–12, in 0.5 steps |
+| reason | text | nullable |
+| status | enum | pending, approved, rejected |
+| reviewed_by | uuid | nullable, FK → profiles |
+| reviewed_at | timestamp | nullable |
+
+One entry per employee per day (unique constraint). Unlike every other approval flow in this app,
+only **Admin** may approve/reject — HR can view all entries but not act on them.
 
 **Row Level Security (RLS):** enabled on all tables. Employees can only read/write their own rows; HR/Admin roles get broader policies for approvals, editing holidays, and managing employee records.
 

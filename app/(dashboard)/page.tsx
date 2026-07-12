@@ -1,24 +1,31 @@
-import { CalendarDays, ClipboardList, PartyPopper, Users, Clock } from "lucide-react";
+import { CalendarDays, ClipboardList, PartyPopper, Users, Clock, Timer } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
 import { hoursWorked } from "@/lib/attendance";
-import type { Attendance, Holiday, Profile } from "@/lib/types";
+import type { Attendance, Holiday, OvertimeRequest, Profile } from "@/lib/types";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { LeaveBalanceMeters } from "@/components/dashboard/leave-balance-meters";
 import { RoleInfoCard } from "@/components/dashboard/role-info-card";
 import { WeeklyAttendanceChart, type DayHours } from "@/components/dashboard/weekly-attendance-chart";
 import { UpcomingHolidays } from "@/components/dashboard/upcoming-holidays";
 
-const DAY_LABEL_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "short" });
+const DHAKA_TIME_ZONE = "Asia/Dhaka";
+const DAY_LABEL_FORMAT = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  timeZone: DHAKA_TIME_ZONE,
+});
 const DATE_LABEL_FORMAT = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
   month: "short",
   day: "numeric",
+  timeZone: DHAKA_TIME_ZONE,
 });
+const ISO_DATE_FORMAT = new Intl.DateTimeFormat("en-CA", { timeZone: DHAKA_TIME_ZONE });
 
+// Matches attendance.date, which is keyed to the Bangladesh calendar day.
 function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  return ISO_DATE_FORMAT.format(d);
 }
 
 export default async function DashboardPage() {
@@ -34,30 +41,43 @@ export default async function DashboardPage() {
     .single<Profile>();
 
   const isStaff = Boolean(profile && ["admin", "hr"].includes(profile.role));
+  const isAdmin = profile?.role === "admin";
   const year = new Date().getFullYear();
   const today = new Date();
   const todayIso = isoDate(today);
+  const currentMonth = todayIso.slice(0, 7);
 
   const weekStart = new Date(today);
   weekStart.setDate(weekStart.getDate() - 6);
   const weekStartIso = isoDate(weekStart);
 
-  const [{ data: weekAttendance }, { data: upcomingHolidays }, balance] = await Promise.all([
-    supabase
-      .from("attendance")
-      .select("*")
-      .eq("employee_id", user!.id)
-      .gte("date", weekStartIso)
-      .returns<Attendance[]>(),
-    supabase
-      .from("holidays")
-      .select("*")
-      .gte("date", todayIso)
-      .order("date")
-      .limit(3)
-      .returns<Holiday[]>(),
-    ensureLeaveBalance(createAdminClient(), user!.id, year),
-  ]);
+  const [{ data: weekAttendance }, { data: upcomingHolidays }, balance, { data: myOvertime }] =
+    await Promise.all([
+      supabase
+        .from("attendance")
+        .select("*")
+        .eq("employee_id", user!.id)
+        .gte("date", weekStartIso)
+        .returns<Attendance[]>(),
+      supabase
+        .from("holidays")
+        .select("*")
+        .gte("date", todayIso)
+        .order("date")
+        .limit(3)
+        .returns<Holiday[]>(),
+      ensureLeaveBalance(createAdminClient(), user!.id, year),
+      supabase
+        .from("overtime_requests")
+        .select("*")
+        .eq("employee_id", user!.id)
+        .returns<OvertimeRequest[]>(),
+    ]);
+
+  const pendingOvertimeOwn = (myOvertime ?? []).filter((o) => o.status === "pending").length;
+  const approvedOvertimeHoursThisMonth = (myOvertime ?? [])
+    .filter((o) => o.status === "approved" && o.date.slice(0, 7) === currentMonth)
+    .reduce((sum, o) => sum + o.hours, 0);
 
   const hoursByDate = new Map(
     (weekAttendance ?? []).map((a) => [a.date, hoursWorked(a.check_in, a.check_out)]),
@@ -92,6 +112,7 @@ export default async function DashboardPage() {
   let pendingApprovals = 0;
   let checkedInToday = 0;
   let totalEmployees = 0;
+  let pendingOvertimeApprovals = 0;
 
   if (isStaff) {
     const [{ count: pendingCount }, { count: checkedInCount }, { count: employeeCount }] =
@@ -112,6 +133,14 @@ export default async function DashboardPage() {
     totalEmployees = employeeCount ?? 0;
   }
 
+  if (isAdmin) {
+    const { count: pendingOvertimeCount } = await supabase
+      .from("overtime_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+    pendingOvertimeApprovals = pendingOvertimeCount ?? 0;
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -123,13 +152,23 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           icon={Clock}
           label="Hours this week"
           value={`${weekTotalHours.toFixed(1)}h`}
           sublabel="Last 7 days"
           accent
+        />
+        <StatTile
+          icon={Timer}
+          label="Overtime this month"
+          value={`${approvedOvertimeHoursThisMonth}h`}
+          sublabel={
+            pendingOvertimeOwn > 0
+              ? `${pendingOvertimeOwn} pending review`
+              : "Approved hours"
+          }
         />
         <StatTile
           icon={CalendarDays}
@@ -154,7 +193,7 @@ export default async function DashboardPage() {
       </div>
 
       {isStaff && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatTile
             icon={ClipboardList}
             label="Pending approvals"
@@ -167,6 +206,14 @@ export default async function DashboardPage() {
             value={`${checkedInToday} / ${totalEmployees}`}
             sublabel="Employees"
           />
+          {isAdmin && (
+            <StatTile
+              icon={Timer}
+              label="Overtime approvals"
+              value={String(pendingOvertimeApprovals)}
+              sublabel="Entries awaiting review"
+            />
+          )}
         </div>
       )}
 

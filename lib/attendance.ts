@@ -1,6 +1,14 @@
+const DHAKA_TIME_ZONE = "Asia/Dhaka";
+const DHAKA_UTC_OFFSET = "+06:00"; // Bangladesh Standard Time - fixed offset, no DST
+
 export function formatTime(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-US", {
+    timeZone: DHAKA_TIME_ZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 export function formatDuration(checkIn: string | null, checkOut: string | null) {
@@ -18,15 +26,31 @@ export function hoursWorked(checkIn: string | null, checkOut: string | null) {
   return Math.max(0, ms / 3_600_000);
 }
 
-// For pre-filling a <input type="time"> from a stored timestamp, in the browser's local time.
-export function toLocalTimeInputValue(iso: string | null) {
+// The current calendar date in Bangladesh Standard Time (UTC+6). Attendance
+// "date" rows are keyed to the Dhaka day so a check-in just after midnight
+// Dhaka time still lands on the correct day, regardless of the server's/
+// browser's own timezone.
+export function todayInDhaka() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: DHAKA_TIME_ZONE }).format(new Date());
+}
+
+// For pre-filling a <input type="time"> from a stored timestamp, in Bangladesh Standard Time -
+// matches what formatTime() displays in the history table, so editing round-trips exactly.
+export function toDhakaTimeInputValue(iso: string | null) {
   if (!iso) return "";
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: DHAKA_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const hour = parts.find((p) => p.type === "hour")!.value;
+  const minute = parts.find((p) => p.type === "minute")!.value;
+  return `${hour}:${minute}`;
 }
 
 // Combines a plain date ("YYYY-MM-DD") with a <input type="time"> value ("HH:MM"),
-// interpreted in the browser's local timezone, into a UTC ISO timestamp.
+// both interpreted in Bangladesh Standard Time (UTC+6, no DST), into a UTC ISO timestamp.
 export function buildIsoFromDateAndTime(date: string, time: string) {
-  return new Date(`${date}T${time}:00`).toISOString();
+  return new Date(`${date}T${time}:00${DHAKA_UTC_OFFSET}`).toISOString();
 }
