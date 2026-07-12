@@ -30,13 +30,15 @@ export default async function HolidaysPage() {
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Holidays</CardTitle>
-        {isStaff && (
-          <div className="flex items-center gap-2">
-            <SeedDefaultHolidaysButton />
-            <HolidaysImportExport holidays={holidays ?? []} />
-            <HolidayFormDialog />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <SeedDefaultHolidaysButton />
+          {isStaff && (
+            <>
+              <HolidaysImportExport holidays={holidays ?? []} />
+              <HolidayFormDialog />
+            </>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <HolidaysList holidays={holidays ?? []} isStaff={isStaff} />
