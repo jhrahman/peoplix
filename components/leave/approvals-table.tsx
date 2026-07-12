@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { LeaveRequest } from "@/lib/types";
+import { leaveDays } from "@/lib/leave";
 
 type LeaveRequestWithEmployee = LeaveRequest & { employee: { full_name: string } | null };
 
@@ -44,6 +45,7 @@ export function ApprovalsTable({ requests }: { requests: LeaveRequestWithEmploye
             <TableHead>Employee</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Dates</TableHead>
+            <TableHead>Days</TableHead>
             <TableHead>Reason</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -58,6 +60,7 @@ export function ApprovalsTable({ requests }: { requests: LeaveRequestWithEmploye
               <TableCell>
                 {request.start_date} → {request.end_date}
               </TableCell>
+              <TableCell>{leaveDays(request.start_date, request.end_date)}</TableCell>
               <TableCell className="max-w-xs truncate">{request.reason ?? "—"}</TableCell>
               <TableCell className="flex justify-end gap-2">
                 <Button

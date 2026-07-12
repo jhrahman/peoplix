@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { LeaveType } from "@/lib/types";
+import { leaveDays } from "@/lib/leave";
 
 export function ApplyLeaveDialog() {
   const router = useRouter();
@@ -33,6 +34,10 @@ export function ApplyLeaveDialog() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
+
+  const days = endDate && startDate && endDate >= startDate
+    ? leaveDays(startDate, endDate)
+    : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,6 +119,11 @@ export function ApplyLeaveDialog() {
               />
             </div>
           </div>
+          {days !== null && (
+            <p className="text-sm text-muted-foreground">
+              {days} {days === 1 ? "day" : "days"} of leave
+            </p>
+          )}
           <div className="space-y-2">
             <Label htmlFor="reason">Reason (optional)</Label>
             <Input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} />

@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { LeaveRequest, LeaveStatus } from "@/lib/types";
+import { leaveDays } from "@/lib/leave";
 
 const STATUS_VARIANT: Record<LeaveStatus, "secondary" | "default" | "destructive"> = {
   pending: "secondary",
@@ -42,6 +43,7 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequest[] }) {
           <TableRow>
             <TableHead>Type</TableHead>
             <TableHead>Dates</TableHead>
+            <TableHead>Days</TableHead>
             <TableHead>Reason</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -54,6 +56,7 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequest[] }) {
               <TableCell>
                 {request.start_date} → {request.end_date}
               </TableCell>
+              <TableCell>{leaveDays(request.start_date, request.end_date)}</TableCell>
               <TableCell className="max-w-xs truncate">{request.reason ?? "—"}</TableCell>
               <TableCell>
                 <Badge variant={STATUS_VARIANT[request.status]} className="capitalize">
