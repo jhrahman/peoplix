@@ -54,7 +54,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { leave_type, start_date, end_date, reason } = body;
+  const { leave_type, start_date, end_date, reason, employee_email } = body;
 
   if (!leave_type || !start_date || !end_date) {
     return NextResponse.json(
@@ -70,10 +70,43 @@ export async function POST(request: Request) {
     );
   }
 
+  let employeeId = user.id;
+
+  // Only Admin/HR may file a request on someone else's behalf (e.g. bulk import).
+  if (employee_email) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single<Profile>();
+
+    if (!profile || !["admin", "hr"].includes(profile.role)) {
+      return NextResponse.json(
+        { error: "Only Admin/HR can file leave for another employee" },
+        { status: 403 },
+      );
+    }
+
+    const { data: targetEmployee } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("email", employee_email)
+      .maybeSingle<{ id: string }>();
+
+    if (!targetEmployee) {
+      return NextResponse.json(
+        { error: `No employee found with email ${employee_email}` },
+        { status: 400 },
+      );
+    }
+
+    employeeId = targetEmployee.id;
+  }
+
   const { data, error } = await supabase
     .from("leave_requests")
     .insert({
-      employee_id: user.id,
+      employee_id: employeeId,
       leave_type,
       start_date,
       end_date,

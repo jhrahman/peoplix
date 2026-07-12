@@ -215,10 +215,12 @@ Applies to the main data-driven features: **Employees**, **Leave requests**, **L
   - Client-side preview of parsed rows before committing
   - Validation (required fields, date formats, valid enum values like `leave_type`/`role`) with per-row error reporting instead of an all-or-nothing failure
   - Import restricted to **Admin/HR roles**; Employees do not get import/export controls
-- **Suggested libraries (free, no external service):**
+  - Leave balances is **export-only** — there's no dedicated balances management table to import into, so a "Leave balances" export button lives on the Leave page instead of getting its own view
+  - Imported leave requests always land as `pending`, regardless of any status column in the sheet — they still have to go through the normal approve/reject flow so the balance-usage increment only ever happens in one place
+- **Libraries (free, no external service):**
   - `papaparse` — CSV parsing/generation
-  - `xlsx` (SheetJS) — Excel (.xlsx) read/write
-  - Both run client-side or in an API route; no paid service required, fits free-tier hosting
+  - `exceljs` — Excel (.xlsx) read/write. The plan originally suggested `xlsx` (SheetJS), but its npm release has unpatched high-severity CVEs (prototype pollution, ReDoS) with no fix available — swapped to `exceljs`, which has no known critical vulnerabilities
+  - Both run entirely client-side (parsing happens in the browser before anything is sent to an API route); no paid service required, fits free-tier hosting
 
 ---
 

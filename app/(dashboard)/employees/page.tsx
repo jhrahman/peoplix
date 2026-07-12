@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import { EmployeesTable } from "@/components/employees/employees-table";
 import { EmployeeFormDialog } from "@/components/employees/employee-form-dialog";
+import { EmployeesImportExport } from "@/components/employees/employees-import-export";
 
 export default async function EmployeesPage() {
   const supabase = await createClient();
@@ -33,14 +34,17 @@ export default async function EmployeesPage() {
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Employees</CardTitle>
-        <EmployeeFormDialog
-          trigger={
-            <Button size="sm">
-              <Plus className="h-4 w-4" />
-              Add employee
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2">
+          <EmployeesImportExport employees={employees ?? []} />
+          <EmployeeFormDialog
+            trigger={
+              <Button size="sm">
+                <Plus className="h-4 w-4" />
+                Add employee
+              </Button>
+            }
+          />
+        </div>
       </CardHeader>
       <CardContent>
         <EmployeesTable employees={employees ?? []} currentUserId={user!.id} />

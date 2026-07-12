@@ -2,11 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { LeaveRequest, Profile } from "@/lib/types";
+import type { LeaveBalance, LeaveRequest, Profile } from "@/lib/types";
 import { LeaveBalanceCards } from "@/components/leave/leave-balance-cards";
 import { ApplyLeaveDialog } from "@/components/leave/apply-leave-dialog";
 import { MyLeaveTable } from "@/components/leave/my-leave-table";
 import { ApprovalsTable } from "@/components/leave/approvals-table";
+import { LeaveImportExport } from "@/components/leave/leave-import-export";
+import { AllBalancesCard } from "@/components/leave/all-balances-card";
 
 export default async function LeavePage() {
   const supabase = await createClient();
@@ -35,6 +37,7 @@ export default async function LeavePage() {
     .returns<LeaveRequest[]>();
 
   let pendingApprovals: (LeaveRequest & { employee: { full_name: string } | null })[] = [];
+  let allBalances: (LeaveBalance & { employee: { full_name: string } | null })[] = [];
   if (isStaff) {
     const { data } = await supabase
       .from("leave_requests")
@@ -42,6 +45,13 @@ export default async function LeavePage() {
       .eq("status", "pending")
       .order("created_at", { ascending: false });
     pendingApprovals = data ?? [];
+
+    const { data: balancesData } = await supabase
+      .from("leave_balances")
+      .select("*, employee:profiles!leave_balances_employee_id_fkey(full_name)")
+      .eq("year", year)
+      .order("employee_id");
+    allBalances = balancesData ?? [];
   }
 
   return (
@@ -60,14 +70,17 @@ export default async function LeavePage() {
 
       {isStaff && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Approvals</CardTitle>
+            <LeaveImportExport requests={pendingApprovals} />
           </CardHeader>
           <CardContent>
             <ApprovalsTable requests={pendingApprovals} />
           </CardContent>
         </Card>
       )}
+
+      {isStaff && <AllBalancesCard balances={allBalances} />}
     </div>
   );
 }

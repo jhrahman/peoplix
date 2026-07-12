@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Holiday, Profile } from "@/lib/types";
 import { HolidaysList } from "@/components/holidays/holidays-list";
 import { HolidayFormDialog } from "@/components/holidays/holiday-form-dialog";
+import { HolidaysImportExport } from "@/components/holidays/holidays-import-export";
 
 export default async function HolidaysPage() {
   const supabase = await createClient();
@@ -28,7 +29,12 @@ export default async function HolidaysPage() {
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Holidays</CardTitle>
-        {isStaff && <HolidayFormDialog />}
+        {isStaff && (
+          <div className="flex items-center gap-2">
+            <HolidaysImportExport holidays={holidays ?? []} />
+            <HolidayFormDialog />
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <HolidaysList holidays={holidays ?? []} isStaff={isStaff} />
