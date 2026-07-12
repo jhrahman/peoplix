@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureLeaveBalance } from "@/lib/leave";
 
 export async function GET() {
   const auth = await requireRole(["admin", "hr"]);
@@ -56,6 +57,8 @@ export async function POST(request: Request) {
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
+
+  await ensureLeaveBalance(admin, created.user.id, new Date().getFullYear());
 
   const { error: resetError } = await admin.auth.resetPasswordForEmail(email);
   if (resetError) {
