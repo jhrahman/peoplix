@@ -16,8 +16,21 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://peoplix-hr.vercel.app",
+  ),
   title: "Peoplix",
   description: "Peoplix — People management, simplified.",
+  openGraph: {
+    title: "Peoplix",
+    description: "Peoplix — People management, simplified.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Peoplix",
+    description: "Peoplix — People management, simplified.",
+  },
 };
 
 export default function RootLayout({
