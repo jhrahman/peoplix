@@ -1,0 +1,18 @@
+# Local development only. Local Supabase services (Postgres/Auth/Studio) are
+# managed separately via `supabase start` (Supabase CLI), which runs its own
+# Docker containers — this compose file just runs the Next.js app.
+
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    env_file:
+      - .env.local
+    command: npm run dev
