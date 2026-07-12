@@ -39,7 +39,9 @@ Peoplix is a role-based HR management web app. Full plan: [hr-app-plan.md](hr-ap
 - **RLS is required on every Supabase table.** No table ships without a row-level security policy.
 - **Admin-only routes must re-check `role === 'admin'` server-side** from the session — never trust a disabled button or client-side role check as the security boundary (see plan §9, Clear Database).
 - **Free-tier constraints:** Supabase free projects cap at 500MB DB / auto-pause after 7 days of inactivity. Keep this in mind for seed data volume and any keep-alive tooling.
-- Employees can only read/write their own rows unless role is `hr` or `admin`.
+- Employees can only read/write their own rows unless role is `hr` or `admin`. **Exception:**
+  `profiles` are readable (SELECT only) by every authenticated user, to power the read-only
+  Team Directory (`/directory`) — write access (insert/update/delete) is untouched by this.
 
 ## Testing
 - No AI-generated tests in this repo. Test scripts, if/when added, are written manually by the user in a separate pass — don't propose or generate test suites unless explicitly asked.

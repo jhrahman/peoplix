@@ -27,6 +27,17 @@ App URL: https://peoplix-hr.vercel.app/attendance
 | 14 | Perform an override correction as a plain Employee on their own record | Valid Employee account, own attendance row | Edit succeeds without requiring HR/Admin approval (self-service correction, per product design) |
 | 15 | Attempt to edit another employee's attendance record via direct API/URL manipulation as a plain Employee | Employee account, another user's record ID | Request is rejected server-side (not just hidden in the UI) |
 
+## Time format (Bangladesh Standard Time)
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 19 | View any check-in/check-out time in the "Today" card or "My history" table | Any recorded time | Time is displayed in **12-hour format with AM/PM** (e.g. "10:00 AM"), in Bangladesh Standard Time (UTC+6) — regardless of the viewer's own device timezone or locale settings |
+| 20 | View the same attendance record from a browser/device set to a different timezone (e.g. UTC or US Eastern) | Same record, different viewer timezone | The displayed time is identical to test 19 — it does not shift with the viewer's local timezone |
+| 21 | Open the manual override/correction dialog (edit pencil icon) | Select an existing history row | A note reads "Times are in Bangladesh Standard Time (UTC+6)." above the Check in/Check out fields |
+| 22 | Compare the pre-filled Check in/Check out values in the edit dialog against the same row's displayed time in the history table | Any record with both times set | Values match exactly — the edit dialog pre-fills using the same Bangladesh-time value shown in the table (front-end and backend stay in sync) |
+| 23 | Save an edited time in the override dialog, then re-open the dialog for that same row | Set Check out to 18:00, save, reopen | Reopening shows 18:00 pre-filled again — the round-trip through the backend does not shift the time |
+| 24 | Check in shortly after midnight Bangladesh time (e.g. 00:15 BST) | Check-in performed at 00:15 Bangladesh time | The record's "date" is today's Bangladesh calendar date, not the previous UTC day |
+
 ## Team attendance (HR/Admin only)
 
 | # | Action | Test Data | Expected Result |

@@ -13,7 +13,7 @@
 
 Peoplix — People management, simplified.
 
-A role-based HR management web app: employee directory, leave management, Bangladesh holiday calendar, and attendance check-in/out — built end-to-end on free-tier services, with a modern glassmorphism UI and a teal accent theme in both light and dark mode.
+A role-based HR management web app: team directory, leave management, overtime tracking, Bangladesh holiday calendar, and attendance check-in/out — built end-to-end on free-tier services, with a modern glassmorphism UI: an airy teal "light glass" theme and a vibrant emerald-teal "dark ash glass" theme (never dimmed, never violet).
 
 Full project plan: [hr-app-plan.md](hr-app-plan.md).
 
@@ -23,13 +23,15 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 
 - **Authentication** — Supabase Auth session-cookie login, forgot-password / invite flow (`/reset-password`), no public sign-up (accounts are provisioned by Admin/HR).
 - **Role-based access (RBAC)** — `admin`, `hr`, `employee`, enforced by Postgres Row-Level Security *and* re-checked server-side in every API route (never trusted from the client alone).
-- **Dashboard** — at-a-glance stat tiles and charts for leave balance, weekly attendance, upcoming holidays, and account role.
-- **Employee directory** — Admin/HR can add, edit, and remove employees; assign roles; department/designation fields.
+- **Dashboard** — at-a-glance stat tiles and charts for hours worked, overtime, leave balance, upcoming holidays, and account role, plus Admin/HR-only approval-queue counters.
+- **Employee management** — Admin/HR can add, edit, and remove employees; assign roles; department/designation fields.
+- **Team directory** — read-only, searchable (name/department/designation/email) profile listing visible to **every** role — unlike the Employees page, any employee can look up a colleague's contact details.
 - **Leave management** — apply for Casual/Sick/Annual leave, live day-count preview, Admin/HR approval queue, automatic balance deduction on approval, per-employee balance view.
+- **Overtime tracking** — log overtime manually (date + hours in 0.5h steps, one entry per day), Admin-only approval (HR can view but not approve), a per-employee summary (pending/approved/rejected) and matching dashboard widgets.
 - **Holiday calendar** — shared company holiday list, recurring-holiday support, and a one-click "generate default Bangladesh public holidays for this year" recovery action available to any signed-in user.
-- **Attendance** — one-click check-in/out, automatic duration calculation, and a self-service manual override/correction (e.g. fix an accidental early checkout) — no approval step required.
+- **Attendance** — one-click check-in/out with all times shown in Bangladesh Standard Time (12-hour AM/PM, regardless of the viewer's own device timezone), automatic duration calculation, and a self-service manual override/correction (e.g. fix an accidental early checkout) — no approval step required.
 - **Import / Export** — CSV and XLSX for Employees, Leave requests, and Holidays, with a downloadable template, row-by-row validation preview, and per-row import status.
-- **Danger Zone** — Admin-only, type-to-confirm wipe of all leave/holiday/attendance data; employee accounts are never touched.
+- **Danger Zone** — Admin-only, type-to-confirm wipe of all leave/holiday/attendance/overtime data; employee accounts are never touched.
 - **Polish** — page-transition loading states, responsive/mobile layout, empty states everywhere, `data-testid` attributes on every interactive element for automated testing.
 - **Brand assets** — code-generated favicon, apple-touch icon, and Open Graph image (teal gradient mark, no external design tool).
 
@@ -53,22 +55,25 @@ app/
   (auth)/reset-password/   Invite / password-reset landing page
   (dashboard)/             Authenticated app shell (sidebar, navbar, theme toggle)
     page.tsx                 Dashboard widgets
-    employees/                Employee directory (Admin/HR)
+    employees/                Employee management (Admin/HR)
+    directory/                 Read-only team directory (all roles)
     leave/                     Apply, approvals, balances
+    overtime/                  Log, summary, Admin-only approvals
     holidays/                  Holiday calendar
     attendance/                Check-in/out, history, overrides
     settings/                  Profile + Danger Zone
   api/                      REST endpoints, one resource per folder
-    employees/, leave/, holidays/, attendance/, admin/clear-database/
+    employees/, leave/, holidays/, attendance/, overtime/, admin/clear-database/
+    (directory/ has no API route — reads profiles directly, see api-endpoints/API-ENDPOINTS.md §7)
 components/
   ui/            shadcn primitives (Button, Card, Dialog, Table, ...)
   layout/        Sidebar, Navbar, ThemeToggle, page loader
-  {feature}/     Feature-specific components (employees/, leave/, holidays/, attendance/, settings/, import-export/, dashboard/)
+  {feature}/     Feature-specific components (employees/, directory/, leave/, overtime/, holidays/, attendance/, settings/, import-export/, dashboard/)
 lib/
   supabase/      client.ts (browser), server.ts (server components/routes), admin.ts (service-role, server-only), middleware.ts
   auth/          requireRole() — server-side RBAC gate for API routes
   actions/       Next.js Server Actions
-  *.ts           leave.ts, attendance.ts, bd-holidays.ts, import-export.ts — shared domain logic
+  *.ts           leave.ts, attendance.ts, overtime.ts, bd-holidays.ts, import-export.ts — shared domain logic
 supabase/
   migrations/    Numbered SQL migrations (schema, RLS policies, seed data, backfills)
 test-cases/      Manual QA test cases per page (Action / Test Data / Expected Result)
@@ -137,16 +142,20 @@ and both are structured so they can be turned directly into an automated suite (
   - [`03-employees.md`](test-cases/03-employees.md) — access control, add/edit/delete, import/export
   - [`04-leave.md`](test-cases/04-leave.md) — apply, balances, approvals, import/export
   - [`05-holidays.md`](test-cases/05-holidays.md) — CRUD, default BD holiday seeding, import/export
-  - [`06-attendance.md`](test-cases/06-attendance.md) — check-in/out, manual overrides, team view
+  - [`06-attendance.md`](test-cases/06-attendance.md) — check-in/out, manual overrides, team view, Bangladesh time format
   - [`07-settings-danger-zone.md`](test-cases/07-settings-danger-zone.md) — profile edit, Danger Zone RBAC + confirmation flow
+  - [`08-overtime.md`](test-cases/08-overtime.md) — logging, validation, Admin-only approvals, dashboard widgets
+  - [`09-directory.md`](test-cases/09-directory.md) — all-roles visibility, read-only listing, search
 
   Every interactive element in the UI carries a `data-testid` attribute matching these test cases,
   so each row maps cleanly onto a Playwright step (locator → action → assertion).
 
 - **[`api-endpoints/API-ENDPOINTS.md`](api-endpoints/API-ENDPOINTS.md)** — full REST reference for
-  every `/api/*` route (method, auth/role required, request body, response shape, error codes).
-  Use it for real-time API testing with a tool like Postman/Insomnia, `curl`, or Playwright's
-  `request` fixture: log in first and reuse the Supabase session cookie, then exercise each endpoint
-  directly — e.g. `POST /api/leave` to file a request, `PATCH /api/leave/{id}` to approve/reject it,
-  or `POST /api/attendance` / `PATCH /api/attendance/{id}` to cover check-in/out and manual
+  every `/api/*` route (method, auth/role required, request body, response shape, error codes),
+  plus a note on the one page (`/directory`) that has no API route of its own. Use it for
+  real-time API testing with a tool like Postman/Insomnia, `curl`, or Playwright's `request`
+  fixture: log in first and reuse the Supabase session cookie, then exercise each endpoint
+  directly — e.g. `POST /api/leave` to file a request, `PATCH /api/leave/{id}` to approve/reject
+  it, `POST /api/overtime` + `PATCH /api/overtime/{id}` to cover the Admin-only overtime approval
+  rule, or `POST /api/attendance` / `PATCH /api/attendance/{id}` to cover check-in/out and manual
   corrections at the API layer, independent of the UI.

@@ -43,6 +43,9 @@ No public sign-up. Admin creates employee accounts via Supabase Admin API.
 6. **Org chart/departments** — simple `department` field on employee profile (no hierarchy tree in v1)
 7. **Overtime tracking** *(ad-hoc, post-v1)* — employees log overtime manually (date + hours,
    0.5h minimum in 0.5h steps); Admin-only approval (stricter than the usual Admin/HR gate)
+8. **Team directory** *(ad-hoc, post-v1)* — read-only, searchable profile listing visible to
+   every role (name, designation, department, email/phone); no editing. Requires one additional
+   `profiles` SELECT policy so non-staff can read everyone's row (write access unaffected).
 
 ---
 

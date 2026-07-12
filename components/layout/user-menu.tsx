@@ -13,15 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Profile } from "@/lib/types";
 import { signOut } from "@/lib/actions/auth";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
+import { getInitials } from "@/lib/utils";
 
 export function UserMenu({ profile }: { profile: Profile }) {
   return (
@@ -30,7 +22,7 @@ export function UserMenu({ profile }: { profile: Profile }) {
         <Button variant="ghost" className="gap-2 px-2" data-testid="user-menu-trigger">
           <Avatar className="h-7 w-7">
             <AvatarFallback className="text-xs">
-              {initials(profile.full_name)}
+              {getInitials(profile.full_name)}
             </AvatarFallback>
           </Avatar>
           <span className="hidden text-sm font-medium sm:inline">

@@ -16,6 +16,7 @@ Do not put real passwords, service-role keys, or production secrets in this file
 - `UserRole` = `"admin" | "hr" | "employee"`
 - `LeaveType` = `"casual" | "sick" | "annual"`
 - `LeaveStatus` = `"pending" | "approved" | "rejected"`
+- `OvertimeStatus` = `"pending" | "approved" | "rejected"`
 
 ---
 
@@ -229,17 +230,82 @@ Do not put real passwords, service-role keys, or production secrets in this file
 
 ---
 
-## 5. Admin — `/api/admin/clear-database`
+## 5. Overtime — `/api/overtime`
+
+### GET `/api/overtime`
+- **Auth**: Session required
+- **Query params**:
+  - `scope=all` (optional) — Admin/HR only; returns every employee's overtime entries (view-only for HR — see PATCH below). Omitted, or non-staff caller → returns only the caller's own entries (RLS-enforced regardless).
+- **Success (200)**: `{ "data": OvertimeRequest[] }` (each row includes `employee: { full_name }`), newest date first
+- **Errors**: `401`, `500`
+
+### POST `/api/overtime`
+- **Auth**: Session required (self-entry only — there is no staff-on-behalf-of option, unlike Leave)
+- **Body (JSON)**:
+  ```json
+  {
+    "date": "2026-07-12",
+    "hours": 2,
+    "reason": "Server migration support"
+  }
+  ```
+  - Required: `date`, `hours`
+  - `reason` optional
+  - `hours` must be between `0.5` and `12`, in `0.5` steps
+  - `date` must not be in the future (compared against Bangladesh Standard Time, `Asia/Dhaka`)
+  - One entry per employee per calendar day — a second entry for a date already logged is rejected
+- **Success (201)**: `{ "data": OvertimeRequest }`, `status: "pending"`
+- **Errors**:
+  - `400` — missing fields, `hours` outside range/not a 0.5 step, future-dated, or a duplicate entry for that date ("You already logged overtime for that date.")
+  - `401` — not logged in
+
+### PATCH `/api/overtime/{id}`
+- **Auth**: **Admin only** (not HR — HR can view all entries via `GET ?scope=all` but cannot approve/reject)
+- **Path param**: `id` — overtime entry UUID
+- **Body (JSON)**:
+  ```json
+  { "status": "approved" }
+  ```
+  - `status` must be `"approved"` or `"rejected"`
+- **Behavior**: Only a `pending` entry can be reviewed.
+- **Success (200)**: `{ "data": OvertimeRequest }` (updated row, with `reviewed_by`/`reviewed_at` set)
+- **Errors**:
+  - `400` — invalid `status` value, or entry is not currently `pending`
+  - `401`, `403` (includes HR — this is Admin-only)
+  - `404` — entry not found
+
+### DELETE `/api/overtime/{id}`
+- **Auth**: Session required (RLS restricts to the caller's own **pending** entries, or Admin)
+- **Path param**: `id` — overtime entry UUID
+- **Success (200)**: `{ "data": { "id": "<deleted-uuid>" } }`
+- **Errors**:
+  - `401` — not logged in
+  - `404` — not found, not yours, or no longer pending
+
+---
+
+## 6. Admin — `/api/admin/clear-database`
 
 ### POST `/api/admin/clear-database`
 - **Auth**: **Admin only** (not HR — stricter than the usual Admin/HR gate, matches the Danger Zone UI)
 - **Body**: none
-- **Behavior**: Permanently deletes **all rows** from `leave_requests`, `leave_balances`, `holidays`, and `attendance`. Never touches `profiles` or Supabase Auth users — no accounts are affected.
-- **Success (200)**: `{ "data": { "cleared": ["leave_requests", "leave_balances", "holidays", "attendance"] } }`
+- **Behavior**: Permanently deletes **all rows** from `leave_requests`, `leave_balances`, `holidays`, `attendance`, and `overtime_requests`. Never touches `profiles` or Supabase Auth users — no accounts are affected.
+- **Success (200)**: `{ "data": { "cleared": ["leave_requests", "leave_balances", "holidays", "attendance", "overtime_requests"] } }`
 - **Errors**:
   - `401` — not logged in
   - `403` — logged in but not Admin (HR included)
   - `500` — deletion failed partway through (message names which table)
+
+---
+
+## 7. Team Directory — no dedicated API route
+
+`/directory` is a Server Component that queries the `profiles` table directly through
+Supabase (no `/api/*` route backs it). Since migration `0006_profiles_directory_select.sql`,
+every authenticated user can `SELECT` all profiles (write access is unchanged — still
+Admin/HR-only or self-only). If you need to exercise this via an API client rather than the
+UI, query Supabase's PostgREST endpoint directly (`GET {SUPABASE_URL}/rest/v1/profiles`) with
+the logged-in user's access token — there is nothing under `/api/` to call for this feature.
 
 ---
 
@@ -264,4 +330,9 @@ Do not put real passwords, service-role keys, or production secrets in this file
 | GET | `/api/attendance` | Session | List attendance (own, or all/by-date with query params for staff) |
 | POST | `/api/attendance` | Session | Check in for today (idempotent) |
 | PATCH | `/api/attendance/{id}` | Session | Quick check-out, or manual override of check-in/out |
-| POST | `/api/admin/clear-database` | Admin only | Wipe leave/holiday/attendance data (not accounts) |
+| GET | `/api/overtime` | Session | List overtime entries (own, or all with `?scope=all` for staff) |
+| POST | `/api/overtime` | Session | Log overtime (self-entry only) |
+| PATCH | `/api/overtime/{id}` | Admin only | Approve/reject a pending overtime entry |
+| DELETE | `/api/overtime/{id}` | Session | Delete own pending overtime entry (or Admin) |
+| POST | `/api/admin/clear-database` | Admin only | Wipe leave/holiday/attendance/overtime data (not accounts) |
+| — | `/directory` (no API route) | Session | Reads `profiles` directly via Supabase — see §7 |

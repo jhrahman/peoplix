@@ -1,0 +1,110 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Mail, Phone, Search } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { Profile } from "@/lib/types";
+import { getInitials } from "@/lib/utils";
+
+export function DirectoryList({ profiles }: { profiles: Profile[] }) {
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return profiles;
+    return profiles.filter((p) =>
+      [p.full_name, p.department, p.designation, p.email]
+        .filter(Boolean)
+        .some((field) => field!.toLowerCase().includes(q)),
+    );
+  }, [profiles, query]);
+
+  if (profiles.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="directory-empty">
+        No employees yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="relative max-w-sm">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, department, designation, email..."
+          className="pl-8"
+          data-testid="directory-search-input"
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground" data-testid="directory-empty">
+          No employees match your search.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Designation</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((profile) => (
+                <TableRow key={profile.id} data-testid={`directory-row-${profile.id}`}>
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <Avatar size="sm">
+                        <AvatarFallback className="text-xs">
+                          {getInitials(profile.full_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{profile.full_name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{profile.designation ?? "—"}</TableCell>
+                  <TableCell>{profile.department ?? "—"}</TableCell>
+                  <TableCell>
+                    <a
+                      href={`mailto:${profile.email}`}
+                      className="flex items-center gap-1.5 text-primary hover:underline"
+                    >
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      {profile.email}
+                    </a>
+                  </TableCell>
+                  <TableCell>
+                    {profile.phone ? (
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <Phone className="h-3.5 w-3.5 shrink-0" />
+                        {profile.phone}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
