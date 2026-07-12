@@ -32,11 +32,19 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
       <CardHeader>
         <CardTitle>Today</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col items-center gap-4 py-6 text-center">
+      <CardContent
+        className="flex flex-col items-center gap-4 py-6 text-center"
+        data-testid="attendance-today-card"
+      >
         {!today?.check_in ? (
           <>
             <p className="text-sm text-muted-foreground">You haven&apos;t checked in yet.</p>
-            <Button size="lg" onClick={handleCheckIn} disabled={loading}>
+            <Button
+              size="lg"
+              onClick={handleCheckIn}
+              disabled={loading}
+              data-testid="attendance-check-in"
+            >
               <LogIn className="h-4 w-4" />
               {loading ? "Checking in..." : "Check In"}
             </Button>
@@ -46,14 +54,23 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
             <p className="text-sm text-muted-foreground">
               Checked in at <span className="font-medium text-foreground">{formatTime(today.check_in)}</span>
             </p>
-            <Button size="lg" variant="destructive" onClick={handleCheckOut} disabled={loading}>
+            <Button
+              size="lg"
+              variant="destructive"
+              onClick={handleCheckOut}
+              disabled={loading}
+              data-testid="attendance-check-out"
+            >
               <LogOut className="h-4 w-4" />
               {loading ? "Checking out..." : "Check Out"}
             </Button>
           </>
         ) : (
           <>
-            <p className="text-2xl font-heading font-semibold text-primary">
+            <p
+              className="text-2xl font-heading font-semibold text-primary"
+              data-testid="attendance-today-duration"
+            >
               {formatDuration(today.check_in, today.check_out)}
             </p>
             <p className="text-sm text-muted-foreground">

@@ -82,7 +82,11 @@ export function EmployeeFormDialog({ employee, trigger }: EmployeeFormDialogProp
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit employee" : "Add employee"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          data-testid={isEdit ? "employee-edit-form" : "employee-add-form"}
+        >
           <div className="space-y-2">
             <Label htmlFor="full_name">Full name</Label>
             <Input
@@ -90,6 +94,7 @@ export function EmployeeFormDialog({ employee, trigger }: EmployeeFormDialogProp
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
+              data-testid="employee-form-full-name"
             />
           </div>
           <div className="space-y-2">
@@ -101,6 +106,7 @@ export function EmployeeFormDialog({ employee, trigger }: EmployeeFormDialogProp
               disabled={isEdit}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              data-testid="employee-form-email"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -110,6 +116,7 @@ export function EmployeeFormDialog({ employee, trigger }: EmployeeFormDialogProp
                 id="department"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
+                data-testid="employee-form-department"
               />
             </div>
             <div className="space-y-2">
@@ -118,6 +125,7 @@ export function EmployeeFormDialog({ employee, trigger }: EmployeeFormDialogProp
                 id="designation"
                 value={designation}
                 onChange={(e) => setDesignation(e.target.value)}
+                data-testid="employee-form-designation"
               />
             </div>
           </div>
@@ -128,12 +136,13 @@ export function EmployeeFormDialog({ employee, trigger }: EmployeeFormDialogProp
                 id="phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                data-testid="employee-form-phone"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-                <SelectTrigger id="role">
+                <SelectTrigger id="role" data-testid="employee-form-role">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -144,9 +153,13 @@ export function EmployeeFormDialog({ employee, trigger }: EmployeeFormDialogProp
               </Select>
             </div>
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive" data-testid="employee-form-error">
+              {error}
+            </p>
+          )}
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} data-testid="employee-form-submit">
               {loading ? "Saving..." : isEdit ? "Save changes" : "Add employee"}
             </Button>
           </DialogFooter>

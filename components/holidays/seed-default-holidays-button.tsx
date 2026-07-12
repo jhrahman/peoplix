@@ -31,7 +31,13 @@ export function SeedDefaultHolidaysButton() {
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleClick} disabled={loading}>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleClick}
+      disabled={loading}
+      data-testid="holiday-seed-defaults"
+    >
       <Sparkles className="h-4 w-4" />
       {loading ? "Adding..." : "Seed default holidays"}
     </Button>

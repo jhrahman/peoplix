@@ -40,7 +40,12 @@ export function DeleteHolidayButton({ id, name }: { id: string; name: string }) 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Delete ${name}`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Delete ${name}`}
+          data-testid={`holiday-delete-trigger-${id}`}
+        >
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </DialogTrigger>
@@ -50,7 +55,12 @@ export function DeleteHolidayButton({ id, name }: { id: string; name: string }) 
         </DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
-          <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={loading}
+            data-testid={`holiday-delete-confirm-${id}`}
+          >
             {loading ? "Removing..." : "Remove"}
           </Button>
         </DialogFooter>

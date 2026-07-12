@@ -91,7 +91,7 @@ export function ResetPasswordForm() {
 
   if (status === "invalid") {
     return (
-      <div className="space-y-4 text-center">
+      <div className="space-y-4 text-center" data-testid="reset-password-invalid">
         <p className="text-sm text-destructive">
           {error ?? "This reset link is invalid or has expired."}
         </p>
@@ -103,7 +103,7 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" data-testid="reset-password-form">
       <div className="space-y-2">
         <Label htmlFor="password">New password</Label>
         <Input
@@ -113,6 +113,7 @@ export function ResetPasswordForm() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          data-testid="reset-password-input"
         />
       </div>
       <div className="space-y-2">
@@ -124,10 +125,20 @@ export function ResetPasswordForm() {
           required
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
+          data-testid="reset-password-confirm-input"
         />
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" className="w-full" disabled={loading}>
+      {error && (
+        <p className="text-sm text-destructive" data-testid="reset-password-error">
+          {error}
+        </p>
+      )}
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={loading}
+        data-testid="reset-password-submit"
+      >
         {loading ? "Saving..." : "Set password"}
       </Button>
     </form>

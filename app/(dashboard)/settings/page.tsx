@@ -28,24 +28,42 @@ export default async function SettingsPage() {
           <CardTitle>Your profile</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={updateOwnProfile} className="space-y-4">
+          <form action={updateOwnProfile} className="space-y-4" data-testid="settings-profile-form">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" value={profile.email} disabled />
+              <Input id="email" value={profile.email} disabled data-testid="settings-email" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="full_name">Full name</Label>
-              <Input id="full_name" name="full_name" defaultValue={profile.full_name} required />
+              <Input
+                id="full_name"
+                name="full_name"
+                defaultValue={profile.full_name}
+                required
+                data-testid="settings-full-name"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" name="phone" defaultValue={profile.phone ?? ""} />
+              <Input
+                id="phone"
+                name="phone"
+                defaultValue={profile.phone ?? ""}
+                data-testid="settings-phone"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Input id="department" value={profile.department ?? "—"} disabled />
+              <Input
+                id="department"
+                value={profile.department ?? "—"}
+                disabled
+                data-testid="settings-department"
+              />
             </div>
-            <Button type="submit">Save changes</Button>
+            <Button type="submit" data-testid="settings-save">
+              Save changes
+            </Button>
           </form>
         </CardContent>
       </Card>

@@ -22,16 +22,22 @@ export function ExportMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" data-testid={`export-trigger-${filenameBase}`}>
           <Download className="h-4 w-4" />
           Export
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => exportCsv(`${filenameBase}.csv`, rows, columns)}>
+        <DropdownMenuItem
+          onClick={() => exportCsv(`${filenameBase}.csv`, rows, columns)}
+          data-testid={`export-csv-${filenameBase}`}
+        >
           Export as CSV
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => exportXlsx(`${filenameBase}.xlsx`, rows, columns)}>
+        <DropdownMenuItem
+          onClick={() => exportXlsx(`${filenameBase}.xlsx`, rows, columns)}
+          data-testid={`export-xlsx-${filenameBase}`}
+        >
           Export as XLSX
         </DropdownMenuItem>
       </DropdownMenuContent>

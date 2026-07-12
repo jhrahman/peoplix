@@ -52,7 +52,7 @@ export function ApprovalsTable({ requests }: { requests: LeaveRequestWithEmploye
         </TableHeader>
         <TableBody>
           {pending.map((request) => (
-            <TableRow key={request.id}>
+            <TableRow key={request.id} data-testid={`approval-row-${request.id}`}>
               <TableCell className="font-medium">
                 {request.employee?.full_name ?? "—"}
               </TableCell>
@@ -67,6 +67,7 @@ export function ApprovalsTable({ requests }: { requests: LeaveRequestWithEmploye
                   size="sm"
                   disabled={busyId === request.id}
                   onClick={() => handleReview(request.id, "approved")}
+                  data-testid={`approval-approve-${request.id}`}
                 >
                   Approve
                 </Button>
@@ -75,6 +76,7 @@ export function ApprovalsTable({ requests }: { requests: LeaveRequestWithEmploye
                   variant="destructive"
                   disabled={busyId === request.id}
                   onClick={() => handleReview(request.id, "rejected")}
+                  data-testid={`approval-reject-${request.id}`}
                 >
                   Reject
                 </Button>

@@ -38,7 +38,7 @@ export default async function EmployeesPage() {
           <EmployeesImportExport employees={employees ?? []} />
           <EmployeeFormDialog
             trigger={
-              <Button size="sm">
+              <Button size="sm" data-testid="employee-add-trigger">
                 <Plus className="h-4 w-4" />
                 Add employee
               </Button>

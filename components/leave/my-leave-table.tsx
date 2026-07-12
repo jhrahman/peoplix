@@ -51,7 +51,7 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequest[] }) {
         </TableHeader>
         <TableBody>
           {requests.map((request) => (
-            <TableRow key={request.id}>
+            <TableRow key={request.id} data-testid={`leave-request-row-${request.id}`}>
               <TableCell className="capitalize">{request.leave_type}</TableCell>
               <TableCell>
                 {request.start_date} → {request.end_date}
@@ -59,7 +59,11 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequest[] }) {
               <TableCell>{leaveDays(request.start_date, request.end_date)}</TableCell>
               <TableCell className="max-w-xs truncate">{request.reason ?? "—"}</TableCell>
               <TableCell>
-                <Badge variant={STATUS_VARIANT[request.status]} className="capitalize">
+                <Badge
+                  variant={STATUS_VARIANT[request.status]}
+                  className="capitalize"
+                  data-testid={`leave-request-status-${request.id}`}
+                >
                   {request.status}
                 </Badge>
               </TableCell>
@@ -70,6 +74,7 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequest[] }) {
                     size="sm"
                     disabled={cancelingId === request.id}
                     onClick={() => handleCancel(request.id)}
+                    data-testid={`leave-cancel-${request.id}`}
                   >
                     Cancel
                   </Button>

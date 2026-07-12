@@ -39,6 +39,7 @@ export function HolidaysList({
               return (
                 <div
                   key={holiday.id}
+                  data-testid={`holiday-row-${holiday.id}`}
                   className="glass-interactive flex items-center gap-4 rounded-xl bg-card/40 p-3"
                 >
                   <div className="flex w-14 shrink-0 flex-col items-center rounded-lg bg-primary/10 py-1.5 text-primary">

@@ -15,8 +15,10 @@ export function StatTile({
   sublabel?: string;
   accent?: boolean;
 }) {
+  const slug = label.trim().toLowerCase().replace(/\s+/g, "-");
+
   return (
-    <Card className="glass-interactive">
+    <Card className="glass-interactive" data-testid={`stat-tile-${slug}`}>
       <CardContent className="flex items-start gap-3">
         <div
           className={cn(
@@ -28,7 +30,9 @@ export function StatTile({
         </div>
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="font-heading text-2xl font-semibold leading-tight">{value}</p>
+          <p className="font-heading text-2xl font-semibold leading-tight" data-testid={`stat-tile-${slug}-value`}>
+            {value}
+          </p>
           {sublabel && <p className="text-xs text-muted-foreground">{sublabel}</p>}
         </div>
       </CardContent>

@@ -64,11 +64,11 @@ export function HolidayFormDialog({ holiday }: { holiday?: Holiday }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {isEdit ? (
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" data-testid={`holiday-edit-trigger-${holiday!.id}`}>
             Edit
           </Button>
         ) : (
-          <Button size="sm">
+          <Button size="sm" data-testid="holiday-add-trigger">
             <Plus className="h-4 w-4" />
             Add holiday
           </Button>
@@ -78,10 +78,20 @@ export function HolidayFormDialog({ holiday }: { holiday?: Holiday }) {
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit holiday" : "Add holiday"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          data-testid={isEdit ? "holiday-edit-form" : "holiday-add-form"}
+        >
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
-            <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              id="name"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              data-testid="holiday-form-name"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="date">Date</Label>
@@ -91,6 +101,7 @@ export function HolidayFormDialog({ holiday }: { holiday?: Holiday }) {
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}
+              data-testid="holiday-form-date"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -98,14 +109,19 @@ export function HolidayFormDialog({ holiday }: { holiday?: Holiday }) {
               id="is_recurring"
               checked={isRecurring}
               onCheckedChange={(checked) => setIsRecurring(checked === true)}
+              data-testid="holiday-form-recurring"
             />
             <Label htmlFor="is_recurring" className="font-normal">
               Repeats every year
             </Label>
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive" data-testid="holiday-form-error">
+              {error}
+            </p>
+          )}
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} data-testid="holiday-form-submit">
               {loading ? "Saving..." : isEdit ? "Save changes" : "Add holiday"}
             </Button>
           </DialogFooter>

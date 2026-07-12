@@ -34,7 +34,7 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" data-testid="login-form">
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -44,6 +44,7 @@ export function LoginForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          data-testid="login-email-input"
         />
       </div>
       <div className="space-y-2">
@@ -58,10 +59,15 @@ export function LoginForm() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          data-testid="login-password-input"
         />
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" className="w-full" disabled={loading}>
+      {error && (
+        <p className="text-sm text-destructive" data-testid="login-error">
+          {error}
+        </p>
+      )}
+      <Button type="submit" className="w-full" disabled={loading} data-testid="login-submit">
         {loading ? "Signing in..." : "Sign in"}
       </Button>
     </form>

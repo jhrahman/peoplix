@@ -74,7 +74,7 @@ export function ApplyLeaveDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button size="sm" data-testid="leave-apply-trigger">
           <Plus className="h-4 w-4" />
           Apply for leave
         </Button>
@@ -83,11 +83,11 @@ export function ApplyLeaveDialog() {
         <DialogHeader>
           <DialogTitle>Apply for leave</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" data-testid="leave-apply-form">
           <div className="space-y-2">
             <Label htmlFor="leave_type">Leave type</Label>
             <Select value={leaveType} onValueChange={(v) => setLeaveType(v as LeaveType)}>
-              <SelectTrigger id="leave_type">
+              <SelectTrigger id="leave_type" data-testid="leave-apply-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -106,6 +106,7 @@ export function ApplyLeaveDialog() {
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                data-testid="leave-apply-start-date"
               />
             </div>
             <div className="space-y-2">
@@ -116,6 +117,7 @@ export function ApplyLeaveDialog() {
                 required
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
+                data-testid="leave-apply-end-date"
               />
             </div>
           </div>
@@ -126,11 +128,20 @@ export function ApplyLeaveDialog() {
           )}
           <div className="space-y-2">
             <Label htmlFor="reason">Reason (optional)</Label>
-            <Input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Input
+              id="reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              data-testid="leave-apply-reason"
+            />
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive" data-testid="leave-apply-error">
+              {error}
+            </p>
+          )}
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} data-testid="leave-apply-submit">
               {loading ? "Submitting..." : "Submit request"}
             </Button>
           </DialogFooter>

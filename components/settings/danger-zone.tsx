@@ -51,7 +51,7 @@ export function DangerZone({ isAdmin }: { isAdmin: boolean }) {
   }
 
   const clearButton = (
-    <Button variant="destructive" disabled={!isAdmin}>
+    <Button variant="destructive" disabled={!isAdmin} data-testid="danger-zone-clear-trigger">
       <AlertTriangle className="h-4 w-4" />
       Clear Database
     </Button>
@@ -99,9 +99,14 @@ export function DangerZone({ isAdmin }: { isAdmin: boolean }) {
                 onChange={(e) => setConfirmText(e.target.value)}
                 placeholder={CONFIRM_PHRASE}
                 autoComplete="off"
+                data-testid="danger-zone-confirm-input"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p className="text-sm text-destructive" data-testid="danger-zone-error">
+                {error}
+              </p>
+            )}
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setConfirmText("")}>Cancel</AlertDialogCancel>
               <AlertDialogAction
@@ -111,6 +116,7 @@ export function DangerZone({ isAdmin }: { isAdmin: boolean }) {
                 }}
                 disabled={!canConfirm || loading}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                data-testid="danger-zone-confirm-button"
               >
                 {loading ? "Clearing..." : "Clear Database"}
               </AlertDialogAction>

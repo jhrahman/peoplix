@@ -55,6 +55,7 @@ export function ImportDialog<T>({
 
   const validCount = rows.filter((r) => !r.error).length;
   const hasImported = rows.some((r) => r.status === "success" || r.status === "failed");
+  const testSlug = resourceLabel.trim().toLowerCase().replace(/\s+/g, "-");
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -117,7 +118,7 @@ export function ImportDialog<T>({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" data-testid={`import-trigger-${testSlug}`}>
           <Upload className="h-4 w-4" />
           Import
         </Button>
@@ -136,6 +137,7 @@ export function ImportDialog<T>({
               onClick={() =>
                 downloadTemplate(`${resourceLabel}-template.csv`, templateColumns, templateExample)
               }
+              data-testid={`import-download-template-${testSlug}`}
             >
               Download template
             </Button>
@@ -145,6 +147,7 @@ export function ImportDialog<T>({
               accept=".csv,.xlsx,.xls"
               onChange={handleFileChange}
               className="text-sm"
+              data-testid={`import-file-input-${testSlug}`}
             />
           </div>
 
@@ -202,6 +205,7 @@ export function ImportDialog<T>({
             type="button"
             onClick={handleImport}
             disabled={rows.length === 0 || validCount === 0 || importing || hasImported}
+            data-testid={`import-confirm-${testSlug}`}
           >
             {importing ? "Importing..." : `Import ${validCount} row${validCount === 1 ? "" : "s"}`}
           </Button>

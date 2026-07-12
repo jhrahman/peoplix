@@ -43,7 +43,7 @@ export function EmployeesTable({
         </TableHeader>
         <TableBody>
           {employees.map((employee) => (
-            <TableRow key={employee.id}>
+            <TableRow key={employee.id} data-testid={`employee-row-${employee.id}`}>
               <TableCell className="font-medium">{employee.full_name}</TableCell>
               <TableCell>{employee.email}</TableCell>
               <TableCell>{employee.department ?? "—"}</TableCell>
@@ -57,7 +57,12 @@ export function EmployeesTable({
                 <EmployeeFormDialog
                   employee={employee}
                   trigger={
-                    <Button variant="ghost" size="icon" aria-label={`Edit ${employee.full_name}`}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit ${employee.full_name}`}
+                      data-testid={`employee-edit-trigger-${employee.id}`}
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
                   }

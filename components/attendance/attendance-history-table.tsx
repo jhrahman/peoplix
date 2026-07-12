@@ -29,7 +29,7 @@ export function AttendanceHistoryTable({ records }: { records: Attendance[] }) {
         </TableHeader>
         <TableBody>
           {records.map((record) => (
-            <TableRow key={record.id}>
+            <TableRow key={record.id} data-testid={`attendance-row-${record.id}`}>
               <TableCell>{record.date}</TableCell>
               <TableCell>{formatTime(record.check_in)}</TableCell>
               <TableCell>{formatTime(record.check_out)}</TableCell>

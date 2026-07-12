@@ -47,7 +47,12 @@ export function ForgotPasswordDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button type="button" variant="link" className="h-auto p-0 text-sm">
+        <Button
+          type="button"
+          variant="link"
+          className="h-auto p-0 text-sm"
+          data-testid="forgot-password-trigger"
+        >
           Forgot password?
         </Button>
       </DialogTrigger>
@@ -56,11 +61,11 @@ export function ForgotPasswordDialog() {
           <DialogTitle>Reset your password</DialogTitle>
         </DialogHeader>
         {sent ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground" data-testid="forgot-password-sent">
             If an account exists for that email, a reset link is on its way.
           </p>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" data-testid="forgot-password-form">
             <div className="space-y-2">
               <Label htmlFor="forgot_email">Email</Label>
               <Input
@@ -69,10 +74,11 @@ export function ForgotPasswordDialog() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                data-testid="forgot-password-email-input"
               />
             </div>
             <DialogFooter>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} data-testid="forgot-password-submit">
                 {loading ? "Sending..." : "Send reset link"}
               </Button>
             </DialogFooter>

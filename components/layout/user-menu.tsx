@@ -27,7 +27,7 @@ export function UserMenu({ profile }: { profile: Profile }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="gap-2 px-2">
+        <Button variant="ghost" className="gap-2 px-2" data-testid="user-menu-trigger">
           <Avatar className="h-7 w-7">
             <AvatarFallback className="text-xs">
               {initials(profile.full_name)}
@@ -43,7 +43,7 @@ export function UserMenu({ profile }: { profile: Profile }) {
         <DropdownMenuSeparator />
         <form action={signOut}>
           <DropdownMenuItem asChild>
-            <button type="submit" className="w-full text-left">
+            <button type="submit" className="w-full text-left" data-testid="sign-out-button">
               <LogOut className="h-4 w-4" />
               Sign out
             </button>

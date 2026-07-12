@@ -56,7 +56,12 @@ export function EditAttendanceDialog({ record }: { record: Attendance }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Edit attendance for ${record.date}`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Edit attendance for ${record.date}`}
+          data-testid={`attendance-edit-trigger-${record.id}`}
+        >
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -64,7 +69,7 @@ export function EditAttendanceDialog({ record }: { record: Attendance }) {
         <DialogHeader>
           <DialogTitle>Edit attendance — {record.date}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" data-testid="attendance-edit-form">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="check_in">Check in</Label>
@@ -73,6 +78,7 @@ export function EditAttendanceDialog({ record }: { record: Attendance }) {
                 type="time"
                 value={checkInTime}
                 onChange={(e) => setCheckInTime(e.target.value)}
+                data-testid="attendance-edit-check-in"
               />
             </div>
             <div className="space-y-2">
@@ -82,12 +88,17 @@ export function EditAttendanceDialog({ record }: { record: Attendance }) {
                 type="time"
                 value={checkOutTime}
                 onChange={(e) => setCheckOutTime(e.target.value)}
+                data-testid="attendance-edit-check-out"
               />
             </div>
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive" data-testid="attendance-edit-error">
+              {error}
+            </p>
+          )}
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} data-testid="attendance-edit-submit">
               {loading ? "Saving..." : "Save correction"}
             </Button>
           </DialogFooter>
