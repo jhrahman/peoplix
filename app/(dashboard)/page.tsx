@@ -1,6 +1,25 @@
+import { CalendarDays, ClipboardList, PartyPopper, Users, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Profile } from "@/lib/types";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureLeaveBalance } from "@/lib/leave";
+import { hoursWorked } from "@/lib/attendance";
+import type { Attendance, Holiday, Profile } from "@/lib/types";
+import { StatTile } from "@/components/dashboard/stat-tile";
+import { LeaveBalanceMeters } from "@/components/dashboard/leave-balance-meters";
+import { RoleInfoCard } from "@/components/dashboard/role-info-card";
+import { WeeklyAttendanceChart, type DayHours } from "@/components/dashboard/weekly-attendance-chart";
+import { UpcomingHolidays } from "@/components/dashboard/upcoming-holidays";
+
+const DAY_LABEL_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "short" });
+const DATE_LABEL_FORMAT = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -14,8 +33,87 @@ export default async function DashboardPage() {
     .eq("id", user!.id)
     .single<Profile>();
 
+  const isStaff = Boolean(profile && ["admin", "hr"].includes(profile.role));
+  const year = new Date().getFullYear();
+  const today = new Date();
+  const todayIso = isoDate(today);
+
+  const weekStart = new Date(today);
+  weekStart.setDate(weekStart.getDate() - 6);
+  const weekStartIso = isoDate(weekStart);
+
+  const [{ data: weekAttendance }, { data: upcomingHolidays }, balance] = await Promise.all([
+    supabase
+      .from("attendance")
+      .select("*")
+      .eq("employee_id", user!.id)
+      .gte("date", weekStartIso)
+      .returns<Attendance[]>(),
+    supabase
+      .from("holidays")
+      .select("*")
+      .gte("date", todayIso)
+      .order("date")
+      .limit(3)
+      .returns<Holiday[]>(),
+    ensureLeaveBalance(createAdminClient(), user!.id, year),
+  ]);
+
+  const hoursByDate = new Map(
+    (weekAttendance ?? []).map((a) => [a.date, hoursWorked(a.check_in, a.check_out)]),
+  );
+
+  const days: DayHours[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    const date = isoDate(d);
+    return {
+      label: DAY_LABEL_FORMAT.format(d),
+      dateLabel: DATE_LABEL_FORMAT.format(d),
+      hours: hoursByDate.get(date) ?? 0,
+    };
+  });
+
+  const weekTotalHours = days.reduce((sum, d) => sum + d.hours, 0);
+  const leaveRemaining =
+    balance.casual_total -
+    balance.casual_used +
+    (balance.sick_total - balance.sick_used) +
+    (balance.annual_total - balance.annual_used);
+
+  const nextHoliday = upcomingHolidays?.[0];
+  const nextHolidayDays = nextHoliday
+    ? Math.round(
+        (new Date(`${nextHoliday.date}T00:00:00`).getTime() - new Date(todayIso).getTime()) /
+          86_400_000,
+      )
+    : null;
+
+  let pendingApprovals = 0;
+  let checkedInToday = 0;
+  let totalEmployees = 0;
+
+  if (isStaff) {
+    const [{ count: pendingCount }, { count: checkedInCount }, { count: employeeCount }] =
+      await Promise.all([
+        supabase
+          .from("leave_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending"),
+        supabase
+          .from("attendance")
+          .select("id", { count: "exact", head: true })
+          .eq("date", todayIso)
+          .not("check_in", "is", null),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+      ]);
+    pendingApprovals = pendingCount ?? 0;
+    checkedInToday = checkedInCount ?? 0;
+    totalEmployees = employeeCount ?? 0;
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
           Welcome, {profile?.full_name}
@@ -25,15 +123,61 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Getting started</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          More widgets (leave balances, attendance, holidays) land here as
-          each module ships.
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile
+          icon={Clock}
+          label="Hours this week"
+          value={`${weekTotalHours.toFixed(1)}h`}
+          sublabel="Last 7 days"
+          accent
+        />
+        <StatTile
+          icon={CalendarDays}
+          label="Leave remaining"
+          value={`${leaveRemaining} days`}
+          sublabel="Across casual, sick, annual"
+        />
+        <StatTile
+          icon={PartyPopper}
+          label="Next holiday"
+          value={
+            nextHoliday
+              ? nextHolidayDays === 0
+                ? "Today"
+                : nextHolidayDays === 1
+                  ? "Tomorrow"
+                  : `In ${nextHolidayDays} days`
+              : "None scheduled"
+          }
+          sublabel={nextHoliday?.name}
+        />
+      </div>
+
+      {isStaff && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <StatTile
+            icon={ClipboardList}
+            label="Pending approvals"
+            value={String(pendingApprovals)}
+            sublabel="Leave requests awaiting review"
+          />
+          <StatTile
+            icon={Users}
+            label="Checked in today"
+            value={`${checkedInToday} / ${totalEmployees}`}
+            sublabel="Employees"
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <LeaveBalanceMeters balance={balance} />
+        <RoleInfoCard profile={profile!} />
+      </div>
+
+      <WeeklyAttendanceChart days={days} />
+
+      <UpcomingHolidays holidays={upcomingHolidays ?? []} />
     </div>
   );
 }

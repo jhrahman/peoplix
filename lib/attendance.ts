@@ -12,6 +12,12 @@ export function formatDuration(checkIn: string | null, checkOut: string | null) 
   return `${hours}h ${minutes}m`;
 }
 
+export function hoursWorked(checkIn: string | null, checkOut: string | null) {
+  if (!checkIn || !checkOut) return 0;
+  const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+  return Math.max(0, ms / 3_600_000);
+}
+
 // For pre-filling a <input type="time"> from a stored timestamp, in the browser's local time.
 export function toLocalTimeInputValue(iso: string | null) {
   if (!iso) return "";
