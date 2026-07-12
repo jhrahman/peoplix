@@ -11,9 +11,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
-import type { NavItem } from "@/components/layout/nav-items";
+import type { UserRole } from "@/lib/types";
 
-export function MobileNav({ items }: { items: NavItem[] }) {
+export function MobileNav({ role }: { role: UserRole }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -28,7 +28,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
           <SheetTitle>Peoplix</SheetTitle>
         </SheetHeader>
         <div className="px-4" onClick={() => setOpen(false)}>
-          <SidebarNav items={items} />
+          <SidebarNav role={role} />
         </div>
       </SheetContent>
     </Sheet>
