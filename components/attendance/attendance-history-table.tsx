@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { formatDuration, formatTime } from "@/lib/attendance";
 import type { Attendance } from "@/lib/types";
+import { EditAttendanceDialog } from "@/components/attendance/edit-attendance-dialog";
 
 export function AttendanceHistoryTable({ records }: { records: Attendance[] }) {
   if (records.length === 0) {
@@ -23,6 +24,7 @@ export function AttendanceHistoryTable({ records }: { records: Attendance[] }) {
             <TableHead>Check in</TableHead>
             <TableHead>Check out</TableHead>
             <TableHead>Duration</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -32,6 +34,9 @@ export function AttendanceHistoryTable({ records }: { records: Attendance[] }) {
               <TableCell>{formatTime(record.check_in)}</TableCell>
               <TableCell>{formatTime(record.check_out)}</TableCell>
               <TableCell>{formatDuration(record.check_in, record.check_out)}</TableCell>
+              <TableCell className="text-right">
+                <EditAttendanceDialog record={record} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
