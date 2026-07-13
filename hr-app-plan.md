@@ -35,11 +35,15 @@ No public sign-up. Admin creates employee accounts via Supabase Admin API.
 
 ## 2. Modules (v1 Scope)
 1. **Auth** — login, protected routes, role-based access control
-2. **Employee directory/profiles** — CRUD (Admin/HR), read-only self-view (Employee)
+2. **Employee directory/profiles** — CRUD (Admin/HR), read-only self-view (Employee). A small
+   hardcoded allowlist (`lib/protected-employees.ts`) marks accounts that can never be deleted,
+   even by Admin — checked server-side in the delete route, not just hidden in the UI.
 3. **Leave management** — apply, approve/reject, balance tracking
    - Leave types: Casual, Sick, Annual (standard BD types)
 4. **Bangladesh holiday calendar** — seeded default holidays + Admin/HR can add/edit
-5. **Attendance/check-in** — simple Check-in / Check-out button with timestamps
+5. **Attendance/check-in** — simple Check-in / Check-out button with timestamps. Any role can
+   delete their own **today's** record (to re-check-in); no one, including Admin, can delete a
+   past attendance record — enforced via RLS, not just the UI.
 6. **Org chart/departments** — simple `department` field on employee profile (no hierarchy tree in v1)
 7. **Overtime tracking** *(ad-hoc, post-v1)* — employees log overtime manually (date + hours,
    0.5h minimum in 0.5h steps); Admin-only approval (stricter than the usual Admin/HR gate)

@@ -2,29 +2,51 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogIn, LogOut } from "lucide-react";
+import { toast } from "sonner";
+import { Check, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDuration, formatTime } from "@/lib/attendance";
 import type { Attendance } from "@/lib/types";
 
+type Status = "idle" | "loading" | "success";
+
 export function CheckInOutCard({ today }: { today: Attendance | null }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<Status>("idle");
+  const loading = status === "loading";
 
   async function handleCheckIn() {
-    setLoading(true);
-    await fetch("/api/attendance", { method: "POST" });
-    setLoading(false);
+    setStatus("loading");
+    const res = await fetch("/api/attendance", { method: "POST" });
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      toast.error(json.error ?? "Failed to check in");
+      setStatus("idle");
+      return;
+    }
+
+    setStatus("success");
     router.refresh();
+    setTimeout(() => setStatus("idle"), 1200);
   }
 
   async function handleCheckOut() {
     if (!today) return;
-    setLoading(true);
-    await fetch(`/api/attendance/${today.id}`, { method: "PATCH" });
-    setLoading(false);
+    setStatus("loading");
+    const res = await fetch(`/api/attendance/${today.id}`, { method: "PATCH" });
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      toast.error(json.error ?? "Failed to check out");
+      setStatus("idle");
+      return;
+    }
+
+    setStatus("success");
     router.refresh();
+    setTimeout(() => setStatus("idle"), 1200);
   }
 
   return (
@@ -42,11 +64,15 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
             <Button
               size="lg"
               onClick={handleCheckIn}
-              disabled={loading}
+              disabled={loading || status === "success"}
               data-testid="attendance-check-in"
             >
-              <LogIn className="h-4 w-4" />
-              {loading ? "Checking in..." : "Check In"}
+              {status === "success" ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <LogIn className="h-4 w-4" />
+              )}
+              {status === "success" ? "Checked in" : loading ? "Checking in..." : "Check In"}
             </Button>
           </>
         ) : !today.check_out ? (
@@ -58,11 +84,15 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
               size="lg"
               variant="destructive"
               onClick={handleCheckOut}
-              disabled={loading}
+              disabled={loading || status === "success"}
               data-testid="attendance-check-out"
             >
-              <LogOut className="h-4 w-4" />
-              {loading ? "Checking out..." : "Check Out"}
+              {status === "success" ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <LogOut className="h-4 w-4" />
+              )}
+              {status === "success" ? "Checked out" : loading ? "Checking out..." : "Check Out"}
             </Button>
           </>
         ) : (

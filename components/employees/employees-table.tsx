@@ -14,6 +14,7 @@ import { Pencil } from "lucide-react";
 import type { Profile } from "@/lib/types";
 import { EmployeeFormDialog } from "@/components/employees/employee-form-dialog";
 import { DeleteEmployeeButton } from "@/components/employees/delete-employee-button";
+import { isProtectedEmployee } from "@/lib/protected-employees";
 
 export function EmployeesTable({
   employees,
@@ -67,7 +68,7 @@ export function EmployeesTable({
                     </Button>
                   }
                 />
-                {employee.id !== currentUserId && (
+                {employee.id !== currentUserId && !isProtectedEmployee(employee.email) && (
                   <DeleteEmployeeButton id={employee.id} name={employee.full_name} />
                 )}
               </TableCell>

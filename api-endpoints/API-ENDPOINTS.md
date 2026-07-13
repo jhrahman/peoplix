@@ -75,11 +75,11 @@ Do not put real passwords, service-role keys, or production secrets in this file
 ### DELETE `/api/employees/{id}`
 - **Auth**: Admin/HR
 - **Path param**: `id` — employee's profile UUID
-- **Behavior**: Deletes the Supabase Auth user (cascades to profile). Cannot delete your own account.
+- **Behavior**: Deletes the Supabase Auth user (cascades to profile). Cannot delete your own account. A small set of protected accounts (see `lib/protected-employees.ts`) can never be deleted, even by Admin — the UI hides the delete button for them, and this is re-checked server-side regardless.
 - **Success (200)**: `{ "data": { "id": "<deleted-uuid>" } }`
 - **Errors**:
   - `400` — `id` equals the caller's own user id, or deletion failed
-  - `401`, `403`
+  - `401`, `403` — includes deleting a protected account
 
 ---
 
@@ -247,6 +247,16 @@ This route serves two different actions, disambiguated by the request body shape
   - `401`
   - `404` — record not found
 
+### DELETE `/api/attendance/{id}`
+- **Auth**: Session required — only the record owner, and only for **today's** record
+- **Path param**: `id` — attendance record UUID
+- **Behavior**: Deletes the caller's own attendance record for the current Bangladesh calendar date, so they can check in again. Every role can do this for their own today's record. No one — including HR/Admin — can delete a record for a past date; RLS enforces this in addition to the route's own check.
+- **Success (200)**: `{ "data": { "id": "<deleted-uuid>" } }`
+- **Errors**:
+  - `401` — not logged in
+  - `403` — record is not the caller's own, or is not dated today
+  - `404` — record not found
+
 ---
 
 ## 5. Overtime — `/api/overtime`
@@ -368,6 +378,7 @@ the logged-in user's access token — there is nothing under `/api/` to call for
 | GET | `/api/attendance` | Session | List attendance (own, or all/by-date with query params for staff) |
 | POST | `/api/attendance` | Session | Check in for today (idempotent) |
 | PATCH | `/api/attendance/{id}` | Session | Quick check-out, or manual override of check-in/out |
+| DELETE | `/api/attendance/{id}` | Session | Delete own attendance record, today only |
 | GET | `/api/overtime` | Session | List overtime entries (own, or all with `?scope=all` for staff) |
 | POST | `/api/overtime` | Session | Log overtime (self-entry only) |
 | PATCH | `/api/overtime/{id}` | Admin only (`status` body) or Session (owner, edit body) | Approve/reject a pending entry, or self-edit your own pending entry |

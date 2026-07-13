@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Mail, Phone, Search } from "lucide-react";
+import { Mail, Phone, Search, X } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import type { Profile } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
+import { CopyEmailButton } from "@/components/directory/copy-email-button";
 
 export function DirectoryList({ profiles }: { profiles: Profile[] }) {
   const [query, setQuery] = useState("");
@@ -44,9 +46,22 @@ export function DirectoryList({ profiles }: { profiles: Profile[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, department, designation, email..."
-          className="pl-8"
+          className="pl-8 pr-8"
           data-testid="directory-search-input"
         />
+        {query && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2"
+            onClick={() => setQuery("")}
+            aria-label="Clear search"
+            data-testid="directory-search-clear"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -81,13 +96,16 @@ export function DirectoryList({ profiles }: { profiles: Profile[] }) {
                   <TableCell>{profile.designation ?? "—"}</TableCell>
                   <TableCell>{profile.department ?? "—"}</TableCell>
                   <TableCell>
-                    <a
-                      href={`mailto:${profile.email}`}
-                      className="flex items-center gap-1.5 text-primary hover:underline"
-                    >
-                      <Mail className="h-3.5 w-3.5 shrink-0" />
-                      {profile.email}
-                    </a>
+                    <div className="flex items-center gap-1">
+                      <a
+                        href={`mailto:${profile.email}`}
+                        className="flex items-center gap-1.5 text-primary hover:underline"
+                      >
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        {profile.email}
+                      </a>
+                      <CopyEmailButton email={profile.email} />
+                    </div>
                   </TableCell>
                   <TableCell>
                     {profile.phone ? (

@@ -21,6 +21,8 @@ Access: Every role (unlike the Employees page, which is Admin/HR only).
 | 7 | View a row for an employee with no Phone set | Employee profile with no phone | Phone column shows "—" |
 | 8 | Click an employee's email address | Click the email link | Opens the system's default mail client via a `mailto:` link addressed to that employee |
 | 9 | View the directory when the company has no other employees yet | Single-employee database (e.g. fresh install) | Table lists the one existing profile; no error |
+| 9a | Click the copy icon next to an employee's email | Any row | Icon briefly swaps to a checkmark and a "Copied!" tooltip; the email address is on the clipboard (paste it somewhere to confirm) |
+| 9b | Wait ~1.5s after copying | N/A | Icon reverts from checkmark back to the copy icon automatically |
 
 ## Search
 
@@ -34,3 +36,4 @@ Access: Every role (unlike the Employees page, which is Admin/HR only).
 | 15 | Search for a term that matches no one | e.g. "zzzznotarealdept" | Table shows "No employees match your search." instead of an empty table with no explanation |
 | 16 | Clear the search box after searching | Delete all text | Full employee list reappears |
 | 17 | Confirm search does not trigger a network request | Type into the search box while watching dev tools' network tab | No new HTTP request fires — filtering happens entirely client-side against the already-loaded list |
+| 18 | Type text into the search box, then click the X (clear) icon inside the box | Any search query | Icon is only visible while there's text; clicking it instantly clears the box and the full employee list reappears immediately (no delay, no network request) |

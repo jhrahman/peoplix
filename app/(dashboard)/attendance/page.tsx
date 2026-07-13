@@ -1,12 +1,24 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Attendance, Profile } from "@/lib/types";
 import { todayInDhaka } from "@/lib/attendance";
 import { CheckInOutCard } from "@/components/attendance/check-in-out-card";
 import { AttendanceHistoryTable } from "@/components/attendance/attendance-history-table";
+import { AttendanceHistoryFilter } from "@/components/attendance/attendance-history-filter";
 import { TeamAttendanceToday } from "@/components/attendance/team-attendance-today";
 
-export default async function AttendancePage() {
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+export default async function AttendancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const { from, to } = await searchParams;
+  const fromDate = from && ISO_DATE.test(from) ? from : undefined;
+  const toDate = to && ISO_DATE.test(to) ? to : undefined;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -28,13 +40,23 @@ export default async function AttendancePage() {
     .eq("date", today)
     .maybeSingle<Attendance>();
 
-  const { data: history } = await supabase
+  let historyQuery = supabase
     .from("attendance")
     .select("*")
     .eq("employee_id", user!.id)
-    .order("date", { ascending: false })
-    .limit(30)
-    .returns<Attendance[]>();
+    .order("date", { ascending: false });
+
+  if (fromDate) {
+    historyQuery = historyQuery.gte("date", fromDate);
+  }
+  if (toDate) {
+    historyQuery = historyQuery.lte("date", toDate);
+  }
+  if (!fromDate && !toDate) {
+    historyQuery = historyQuery.limit(30);
+  }
+
+  const { data: history } = await historyQuery.returns<Attendance[]>();
 
   let teamToday: (Attendance & { employee: { full_name: string } | null })[] = [];
   if (isStaff) {
@@ -51,8 +73,11 @@ export default async function AttendancePage() {
       <CheckInOutCard today={todayRecord ?? null} />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <CardTitle>My history</CardTitle>
+          <Suspense fallback={null}>
+            <AttendanceHistoryFilter />
+          </Suspense>
         </CardHeader>
         <CardContent>
           <AttendanceHistoryTable records={history ?? []} />

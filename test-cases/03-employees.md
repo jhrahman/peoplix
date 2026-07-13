@@ -40,6 +40,8 @@ Access: Admin and HR only.
 | 16 | Click the delete action for an employee record | Select an existing test employee | A confirmation prompt appears before deletion proceeds |
 | 17 | Confirm deletion | Confirm | Employee is removed from the table; their auth account and related records are handled per product spec (verify no orphaned data is left visible) |
 | 18 | Cancel the deletion confirmation | Cancel | Employee record remains unchanged in the table |
+| 18a | Log in as Admin and look for a delete action on the protected account (`tflash978@gmail.com`) | N/A | No delete icon is shown for that row — every other employee still has one |
+| 18b | Attempt to delete the protected account via direct API call (`DELETE /api/employees/{id}`) | Admin session, protected account's id | Request is rejected (`403`) even though the caller is Admin — this account can never be deleted, UI-hidden or not |
 
 ## Import / Export
 

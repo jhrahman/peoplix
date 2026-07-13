@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isProtectedEmployee } from "@/lib/protected-employees";
 
 export async function GET(
   _request: Request,
@@ -61,6 +62,19 @@ export async function DELETE(
     return NextResponse.json(
       { error: "You cannot delete your own account" },
       { status: 400 },
+    );
+  }
+
+  const { data: target } = await auth.supabase
+    .from("profiles")
+    .select("email")
+    .eq("id", id)
+    .single();
+
+  if (isProtectedEmployee(target?.email)) {
+    return NextResponse.json(
+      { error: "This employee account cannot be deleted" },
+      { status: 403 },
     );
   }
 
