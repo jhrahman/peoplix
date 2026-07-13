@@ -114,9 +114,13 @@ export function AttendanceHistoryFilter() {
             {label}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
+        <PopoverContent
+          className="max-h-[var(--radix-popover-content-available-height)] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto p-0 sm:w-auto"
+          align="end"
+          collisionPadding={12}
+        >
           <div className="flex flex-col sm:flex-row">
-            <div className="flex shrink-0 flex-row gap-1 overflow-x-auto p-2 sm:flex-col sm:overflow-visible sm:border-r">
+            <div className="flex shrink-0 flex-row gap-1 overflow-x-auto p-2 sm:w-36 sm:flex-col sm:overflow-visible sm:border-r">
               {presetOptions.map((preset) => {
                 const active =
                   sameDay(pendingRange?.from, preset.range.from) &&
@@ -126,7 +130,10 @@ export function AttendanceHistoryFilter() {
                     key={preset.label}
                     variant={active ? "secondary" : "ghost"}
                     size="sm"
-                    className={cn("justify-start whitespace-nowrap", active && "font-medium")}
+                    className={cn(
+                      "justify-start whitespace-nowrap text-xs sm:text-sm",
+                      active && "font-medium"
+                    )}
                     onClick={() => handleSelect(preset.range)}
                   >
                     {preset.label}
@@ -140,6 +147,7 @@ export function AttendanceHistoryFilter() {
               onSelect={handleSelect}
               defaultMonth={pendingRange?.from}
               numberOfMonths={1}
+              className="mx-auto"
             />
           </div>
         </PopoverContent>
