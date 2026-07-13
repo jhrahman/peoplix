@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isProtectedEmployee } from "@/lib/protected-employees";
@@ -46,6 +47,7 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  revalidateTag("directory-profiles", { expire: 0 });
   return NextResponse.json({ data });
 }
 
@@ -85,5 +87,6 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  revalidateTag("directory-profiles", { expire: 0 });
   return NextResponse.json({ data: { id } });
 }

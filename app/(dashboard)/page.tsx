@@ -106,29 +106,32 @@ export default async function DashboardPage() {
   let pendingOvertimeApprovals = 0;
 
   if (isStaff) {
-    const [{ count: pendingCount }, { count: checkedInCount }, { count: employeeCount }] =
-      await Promise.all([
-        supabase
-          .from("leave_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending"),
-        supabase
-          .from("attendance")
-          .select("id", { count: "exact", head: true })
-          .eq("date", todayIso)
-          .not("check_in", "is", null),
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-      ]);
+    const [
+      { count: pendingCount },
+      { count: checkedInCount },
+      { count: employeeCount },
+      { count: pendingOvertimeCount },
+    ] = await Promise.all([
+      supabase
+        .from("leave_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+      supabase
+        .from("attendance")
+        .select("id", { count: "exact", head: true })
+        .eq("date", todayIso)
+        .not("check_in", "is", null),
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      isAdmin
+        ? supabase
+            .from("overtime_requests")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending")
+        : Promise.resolve({ count: 0 }),
+    ]);
     pendingApprovals = pendingCount ?? 0;
     checkedInToday = checkedInCount ?? 0;
     totalEmployees = employeeCount ?? 0;
-  }
-
-  if (isAdmin) {
-    const { count: pendingOvertimeCount } = await supabase
-      .from("overtime_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending");
     pendingOvertimeApprovals = pendingOvertimeCount ?? 0;
   }
 

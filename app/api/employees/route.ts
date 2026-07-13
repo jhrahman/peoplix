@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
   }
 
   await ensureLeaveBalance(admin, created.user.id, new Date().getFullYear());
+  revalidateTag("directory-profiles", { expire: 0 });
 
   const { origin } = new URL(request.url);
   const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {

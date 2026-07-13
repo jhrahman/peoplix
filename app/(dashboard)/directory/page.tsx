@@ -1,16 +1,27 @@
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Profile } from "@/lib/types";
 import { DirectoryList } from "@/components/directory/directory-list";
 
-export default async function DirectoryPage() {
-  const supabase = await createClient();
+// Directory data is readable by every authenticated user (see CLAUDE.md), so
+// it's fetched with the admin client and cached across requests/users rather
+// than re-queried per page load.
+const getDirectoryProfiles = unstable_cache(
+  async () => {
+    const { data } = await createAdminClient()
+      .from("profiles")
+      .select("id, full_name, designation, department, email, phone")
+      .order("full_name")
+      .returns<Pick<Profile, "id" | "full_name" | "designation" | "department" | "email" | "phone">[]>();
+    return data ?? [];
+  },
+  ["directory-profiles"],
+  { revalidate: 60, tags: ["directory-profiles"] },
+);
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("full_name")
-    .returns<Profile[]>();
+export default async function DirectoryPage() {
+  const profiles = await getDirectoryProfiles();
 
   return (
     <Card>
@@ -18,7 +29,7 @@ export default async function DirectoryPage() {
         <CardTitle>Team directory</CardTitle>
       </CardHeader>
       <CardContent>
-        <DirectoryList profiles={profiles ?? []} />
+        <DirectoryList profiles={profiles} />
       </CardContent>
     </Card>
   );

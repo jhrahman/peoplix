@@ -24,13 +24,6 @@ export default async function AttendancePage({
   const isStaff = Boolean(profile && ["admin", "hr"].includes(profile.role));
   const today = todayInDhaka();
 
-  const { data: todayRecord } = await supabase
-    .from("attendance")
-    .select("*")
-    .eq("employee_id", user!.id)
-    .eq("date", today)
-    .maybeSingle<Attendance>();
-
   let historyQuery = supabase
     .from("attendance")
     .select("*")
@@ -47,17 +40,25 @@ export default async function AttendancePage({
     historyQuery = historyQuery.limit(30);
   }
 
-  const { data: history } = await historyQuery.returns<Attendance[]>();
-
-  let teamToday: (Attendance & { employee: { full_name: string } | null })[] = [];
-  if (isStaff) {
-    const { data } = await supabase
+  const [{ data: todayRecord }, { data: history }, teamTodayResult] = await Promise.all([
+    supabase
       .from("attendance")
-      .select("*, employee:profiles!attendance_employee_id_fkey(full_name)")
+      .select("*")
+      .eq("employee_id", user!.id)
       .eq("date", today)
-      .order("check_in");
-    teamToday = data ?? [];
-  }
+      .maybeSingle<Attendance>(),
+    historyQuery.returns<Attendance[]>(),
+    isStaff
+      ? supabase
+          .from("attendance")
+          .select("*, employee:profiles!attendance_employee_id_fkey(full_name)")
+          .eq("date", today)
+          .order("check_in")
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const teamToday: (Attendance & { employee: { full_name: string } | null })[] =
+    teamTodayResult.data ?? [];
 
   return (
     <div className="space-y-6">

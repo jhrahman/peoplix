@@ -17,7 +17,12 @@ import type { Profile } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
 import { CopyEmailButton } from "@/components/directory/copy-email-button";
 
-export function DirectoryList({ profiles }: { profiles: Profile[] }) {
+type DirectoryProfile = Pick<
+  Profile,
+  "id" | "full_name" | "designation" | "department" | "email" | "phone"
+>;
+
+export function DirectoryList({ profiles }: { profiles: DirectoryProfile[] }) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {

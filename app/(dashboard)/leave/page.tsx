@@ -18,32 +18,35 @@ export default async function LeavePage() {
 
   // Own balance is created here with the admin client, but only ever for the
   // signed-in user's own id (derived from the session, not client input).
-  const balance = await ensureLeaveBalance(createAdminClient(), user!.id, year);
+  const [balance, { data: myRequests }, pendingApprovalsResult, allBalancesResult] =
+    await Promise.all([
+      ensureLeaveBalance(createAdminClient(), user!.id, year),
+      supabase
+        .from("leave_requests")
+        .select("*")
+        .eq("employee_id", user!.id)
+        .order("created_at", { ascending: false })
+        .returns<LeaveRequest[]>(),
+      isStaff
+        ? supabase
+            .from("leave_requests")
+            .select("*, employee:profiles!leave_requests_employee_id_fkey(full_name)")
+            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: null }),
+      isStaff
+        ? supabase
+            .from("leave_balances")
+            .select("*, employee:profiles!leave_balances_employee_id_fkey(full_name)")
+            .eq("year", year)
+            .order("employee_id")
+        : Promise.resolve({ data: null }),
+    ]);
 
-  const { data: myRequests } = await supabase
-    .from("leave_requests")
-    .select("*")
-    .eq("employee_id", user!.id)
-    .order("created_at", { ascending: false })
-    .returns<LeaveRequest[]>();
-
-  let pendingApprovals: (LeaveRequest & { employee: { full_name: string } | null })[] = [];
-  let allBalances: (LeaveBalance & { employee: { full_name: string } | null })[] = [];
-  if (isStaff) {
-    const { data } = await supabase
-      .from("leave_requests")
-      .select("*, employee:profiles!leave_requests_employee_id_fkey(full_name)")
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
-    pendingApprovals = data ?? [];
-
-    const { data: balancesData } = await supabase
-      .from("leave_balances")
-      .select("*, employee:profiles!leave_balances_employee_id_fkey(full_name)")
-      .eq("year", year)
-      .order("employee_id");
-    allBalances = balancesData ?? [];
-  }
+  const pendingApprovals: (LeaveRequest & { employee: { full_name: string } | null })[] =
+    pendingApprovalsResult.data ?? [];
+  const allBalances: (LeaveBalance & { employee: { full_name: string } | null })[] =
+    allBalancesResult.data ?? [];
 
   return (
     <div className="space-y-6">

@@ -11,22 +11,24 @@ export default async function OvertimePage() {
 
   const isAdmin = profile?.role === "admin";
 
-  const { data: myRequests } = await supabase
-    .from("overtime_requests")
-    .select("*")
-    .eq("employee_id", user!.id)
-    .order("date", { ascending: false })
-    .returns<OvertimeRequest[]>();
-
-  let pendingApprovals: (OvertimeRequest & { employee: { full_name: string } | null })[] = [];
-  if (isAdmin) {
-    const { data } = await supabase
+  const [{ data: myRequests }, pendingApprovalsResult] = await Promise.all([
+    supabase
       .from("overtime_requests")
-      .select("*, employee:profiles!overtime_requests_employee_id_fkey(full_name)")
-      .eq("status", "pending")
-      .order("date", { ascending: false });
-    pendingApprovals = data ?? [];
-  }
+      .select("*")
+      .eq("employee_id", user!.id)
+      .order("date", { ascending: false })
+      .returns<OvertimeRequest[]>(),
+    isAdmin
+      ? supabase
+          .from("overtime_requests")
+          .select("*, employee:profiles!overtime_requests_employee_id_fkey(full_name)")
+          .eq("status", "pending")
+          .order("date", { ascending: false })
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const pendingApprovals: (OvertimeRequest & { employee: { full_name: string } | null })[] =
+    pendingApprovalsResult.data ?? [];
 
   return (
     <div className="space-y-6">
