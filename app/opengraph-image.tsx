@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { LOGO_VIEWBOX, LOGO_TAIL_PATH, LOGO_STEM, LOGO_BOWL_PATH } from "@/lib/brand";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -29,7 +30,11 @@ export default function OpengraphImage() {
             marginBottom: 40,
           }}
         >
-          <span style={{ color: "white", fontSize: 72, fontWeight: 700 }}>P</span>
+          <svg viewBox={LOGO_VIEWBOX} width={72} height={72} fill="none">
+            <path d={LOGO_TAIL_PATH} stroke="white" strokeWidth="5" strokeLinecap="round" />
+            <rect {...LOGO_STEM} fill="white" />
+            <path d={LOGO_BOWL_PATH} stroke="white" strokeWidth="7.5" strokeLinecap="round" />
+          </svg>
         </div>
         <span style={{ color: "white", fontSize: 76, fontWeight: 700, letterSpacing: -2 }}>
           Peoplix

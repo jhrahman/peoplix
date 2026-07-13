@@ -1,11 +1,12 @@
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { Logo } from "@/components/layout/logo";
 
 export default function ResetPasswordPage() {
   return (
     <div className="app-background flex flex-1 flex-col">
       <header className="flex items-center justify-between px-6 py-4">
-        <span className="text-lg font-heading font-semibold tracking-tight">Peoplix</span>
+        <Logo />
         <ThemeToggle />
       </header>
 
