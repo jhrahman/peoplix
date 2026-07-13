@@ -1,22 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/get-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { OvertimeRequest, Profile } from "@/lib/types";
+import type { OvertimeRequest } from "@/lib/types";
 import { OvertimeSummaryCards } from "@/components/overtime/overtime-summary-cards";
 import { LogOvertimeDialog } from "@/components/overtime/log-overtime-dialog";
 import { MyOvertimeTable } from "@/components/overtime/my-overtime-table";
 import { OvertimeApprovalsTable } from "@/components/overtime/overtime-approvals-table";
 
 export default async function OvertimePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user!.id)
-    .single<Profile>();
+  const { supabase, user, profile } = await getCurrentProfile();
 
   const isAdmin = profile?.role === "admin";
 

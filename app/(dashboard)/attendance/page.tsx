@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/get-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Attendance, Profile } from "@/lib/types";
+import type { Attendance } from "@/lib/types";
 import { todayInDhaka } from "@/lib/attendance";
 import { CheckInOutCard } from "@/components/attendance/check-in-out-card";
 import { AttendanceHistoryTable } from "@/components/attendance/attendance-history-table";
@@ -19,16 +19,7 @@ export default async function AttendancePage({
   const fromDate = from && ISO_DATE.test(from) ? from : undefined;
   const toDate = to && ISO_DATE.test(to) ? to : undefined;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user!.id)
-    .single<Profile>();
+  const { supabase, user, profile } = await getCurrentProfile();
 
   const isStaff = Boolean(profile && ["admin", "hr"].includes(profile.role));
   const today = todayInDhaka();

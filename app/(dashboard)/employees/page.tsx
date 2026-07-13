@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/get-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -9,16 +9,7 @@ import { EmployeeFormDialog } from "@/components/employees/employee-form-dialog"
 import { EmployeesImportExport } from "@/components/employees/employees-import-export";
 
 export default async function EmployeesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user!.id)
-    .single<Profile>();
+  const { supabase, user, profile } = await getCurrentProfile();
 
   if (!profile || !["admin", "hr"].includes(profile.role)) {
     redirect("/");

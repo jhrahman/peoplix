@@ -1,9 +1,9 @@
 import { CalendarDays, ClipboardList, PartyPopper, Users, Clock, Timer } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/get-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
 import { hoursWorked } from "@/lib/attendance";
-import type { Attendance, Holiday, OvertimeRequest, Profile } from "@/lib/types";
+import type { Attendance, Holiday, OvertimeRequest } from "@/lib/types";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { LeaveBalanceMeters } from "@/components/dashboard/leave-balance-meters";
 import { RoleInfoCard } from "@/components/dashboard/role-info-card";
@@ -29,16 +29,7 @@ function isoDate(d: Date) {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user!.id)
-    .single<Profile>();
+  const { supabase, user, profile } = await getCurrentProfile();
 
   const isStaff = Boolean(profile && ["admin", "hr"].includes(profile.role));
   const isAdmin = profile?.role === "admin";

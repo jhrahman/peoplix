@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/get-profile";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { LeaveBalance, LeaveRequest, Profile } from "@/lib/types";
+import type { LeaveBalance, LeaveRequest } from "@/lib/types";
 import { LeaveBalanceCards } from "@/components/leave/leave-balance-cards";
 import { ApplyLeaveDialog } from "@/components/leave/apply-leave-dialog";
 import { MyLeaveTable } from "@/components/leave/my-leave-table";
@@ -11,16 +11,7 @@ import { LeaveImportExport } from "@/components/leave/leave-import-export";
 import { AllBalancesCard } from "@/components/leave/all-balances-card";
 
 export default async function LeavePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user!.id)
-    .single<Profile>();
+  const { supabase, user, profile } = await getCurrentProfile();
 
   const isStaff = profile && ["admin", "hr"].includes(profile.role);
   const year = new Date().getFullYear();

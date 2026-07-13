@@ -1,6 +1,3 @@
-import Papa from "papaparse";
-import ExcelJS from "exceljs";
-
 export type Column = { key: string; label: string };
 
 function triggerDownload(filename: string, blob: Blob) {
@@ -17,11 +14,12 @@ function toCellValue(value: unknown) {
   return String(value);
 }
 
-export function exportCsv(
+export async function exportCsv(
   filename: string,
   rows: Record<string, unknown>[],
   columns: Column[],
 ) {
+  const { default: Papa } = await import("papaparse");
   const csv = Papa.unparse({
     fields: columns.map((c) => c.label),
     data: rows.map((row) => columns.map((c) => toCellValue(row[c.key]))),
@@ -35,6 +33,7 @@ export async function exportXlsx(
   columns: Column[],
   sheetName = "Sheet1",
 ) {
+  const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(sheetName);
   sheet.columns = columns.map((c) => ({ header: c.label, key: c.key, width: 20 }));
@@ -51,14 +50,15 @@ export async function exportXlsx(
   );
 }
 
-export function downloadTemplate(filename: string, columns: Column[], example: Record<string, unknown>) {
-  exportCsv(filename, [example], columns);
+export async function downloadTemplate(filename: string, columns: Column[], example: Record<string, unknown>) {
+  await exportCsv(filename, [example], columns);
 }
 
 export async function parseSpreadsheetFile(file: File): Promise<Record<string, string>[]> {
   const isCsv = file.name.toLowerCase().endsWith(".csv");
 
   if (isCsv) {
+    const { default: Papa } = await import("papaparse");
     const text = await file.text();
     const result = Papa.parse<Record<string, string>>(text, {
       header: true,
@@ -67,6 +67,7 @@ export async function parseSpreadsheetFile(file: File): Promise<Record<string, s
     return result.data;
   }
 
+  const { default: ExcelJS } = await import("exceljs");
   const buffer = await file.arrayBuffer();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
