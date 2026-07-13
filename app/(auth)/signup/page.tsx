@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { LoginForm } from "@/components/auth/login-form";
+import { SignupForm } from "@/components/auth/signup-form";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/layout/logo";
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <div className="app-background flex flex-1 flex-col">
       <header className="flex items-center justify-between px-6 py-4">
@@ -11,19 +11,19 @@ export default function LoginPage() {
         <ThemeToggle />
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-6">
+      <main className="flex flex-1 items-center justify-center px-6 py-8">
         <div className="glass-panel w-full max-w-sm rounded-2xl p-8">
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Request access</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              People management, simplified.
+              Submit your details for Admin approval.
             </p>
           </div>
-          <LoginForm />
+          <SignupForm />
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            New user?{" "}
-            <Link href="/signup" className="font-medium text-primary hover:underline">
-              Click to Sign Up
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-primary hover:underline">
+              Sign in
             </Link>
           </p>
         </div>

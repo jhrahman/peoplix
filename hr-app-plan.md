@@ -29,7 +29,11 @@ Automated testing is explicitly out of scope for this repo — planned separatel
 - **HR** — manages employees, approves leave, edits holidays
 - **Employee** — views own profile, applies for leave, checks in/out, views holidays
 
-No public sign-up. Admin creates employee accounts via Supabase Admin API.
+No self-service account creation. Visitors can submit a sign-up *request* from
+`/signup` (name/email/dept/designation/mobile), but this only writes to a
+`signup_requests` table - `auth.users`/`profiles` are untouched until an Admin
+approves it from Settings, at which point the account is created via the
+Supabase Admin API exactly as with Admin-created employees (see §9).
 
 ---
 

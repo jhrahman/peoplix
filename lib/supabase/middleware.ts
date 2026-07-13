@@ -2,12 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Reachable without a session.
-const PUBLIC_PATHS = ["/login", "/reset-password"];
+const PUBLIC_PATHS = ["/login", "/signup", "/reset-password"];
 // Of those, only these bounce an already-signed-in user back to "/" -
 // /reset-password stays reachable even if a stale session cookie is
 // still around, since a fresh recovery link needs to load and call
 // setSession() itself before that session is actually the right one.
-const REDIRECT_IF_AUTHED_PATHS = ["/login"];
+const REDIRECT_IF_AUTHED_PATHS = ["/login", "/signup"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

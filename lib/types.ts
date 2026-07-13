@@ -58,6 +58,21 @@ export type Attendance = {
   check_out: string | null;
 };
 
+export type SignupRequestStatus = "pending" | "approved" | "rejected";
+
+export type SignupRequest = {
+  id: string;
+  full_name: string;
+  email: string;
+  department: string | null;
+  designation: string | null;
+  mobile: string | null;
+  status: SignupRequestStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};
+
 export type OvertimeStatus = "pending" | "approved" | "rejected";
 
 export type OvertimeRequest = {
