@@ -1,17 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 export function SignOutOverlay() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
-
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/50 backdrop-blur-md">
       <div className="glass-panel relative flex flex-col items-center gap-4 rounded-2xl px-10 py-8">
