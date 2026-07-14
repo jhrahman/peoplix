@@ -27,7 +27,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" value={profile.email} disabled data-testid="settings-email" />
-        <p className="text-xs text-muted-foreground">Email can't be changed.</p>
+        <p className="text-xs text-muted-foreground">Email can&apos;t be changed.</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="full_name">Full name</Label>
