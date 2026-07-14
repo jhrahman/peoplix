@@ -24,9 +24,9 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OVERTIME_HOUR_OPTIONS, formatOvertimeHours } from "@/lib/overtime";
 import { todayInDhaka } from "@/lib/attendance";
-import type { OvertimeRequest } from "@/lib/types";
+import type { OvertimeRequestSummary } from "@/lib/types";
 
-export function LogOvertimeDialog({ entry }: { entry?: OvertimeRequest }) {
+export function LogOvertimeDialog({ entry }: { entry?: OvertimeRequestSummary }) {
   const router = useRouter();
   const isEdit = Boolean(entry);
   const today = todayInDhaka();

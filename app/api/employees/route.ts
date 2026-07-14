@@ -36,39 +36,47 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    password: crypto.randomUUID(),
-    user_metadata: { full_name, role },
-  });
+  try {
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      password: crypto.randomUUID(),
+      user_metadata: { full_name, role },
+    });
 
-  if (createError || !created.user) {
+    if (createError || !created.user) {
+      return NextResponse.json(
+        { error: createError?.message ?? "Failed to create user" },
+        { status: 400 },
+      );
+    }
+
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update({ phone: phone || null, department: department || null, designation: designation || null })
+      .eq("id", created.user.id);
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    await ensureLeaveBalance(admin, created.user.id, new Date().getFullYear());
+    revalidateTag("directory-profiles", { expire: 0 });
+
+    const { origin } = new URL(request.url);
+    const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/reset-password`,
+    });
+    if (resetError) {
+      console.error("Failed to send password setup email:", resetError.message);
+    }
+
+    return NextResponse.json({ data: { id: created.user.id } }, { status: 201 });
+  } catch (err) {
+    console.error("Failed to create employee:", err);
     return NextResponse.json(
-      { error: createError?.message ?? "Failed to create user" },
-      { status: 400 },
+      { error: err instanceof Error ? err.message : "Failed to create employee" },
+      { status: 500 },
     );
   }
-
-  const { error: profileError } = await admin
-    .from("profiles")
-    .update({ phone: phone || null, department: department || null, designation: designation || null })
-    .eq("id", created.user.id);
-
-  if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 });
-  }
-
-  await ensureLeaveBalance(admin, created.user.id, new Date().getFullYear());
-  revalidateTag("directory-profiles", { expire: 0 });
-
-  const { origin } = new URL(request.url);
-  const { error: resetError } = await admin.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/reset-password`,
-  });
-  if (resetError) {
-    console.error("Failed to send password setup email:", resetError.message);
-  }
-
-  return NextResponse.json({ data: { id: created.user.id } }, { status: 201 });
 }

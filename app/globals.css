@@ -161,22 +161,32 @@
     @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_1px_0_0_rgba(255,255,255,0.4)_inset,0_16px_40px_-12px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset,0_16px_40px_-8px_rgba(0,0,0,0.7)];
   }
 
-  /* One-shot pop + ring pulse for the signup success checkmark. */
+  /* Soft, staggered reveal for the signup success checkmark: badge settles
+     in first, then the ring pulses out, then the check strokes itself in. */
   .success-check-badge {
-    animation: success-check-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation: success-check-pop 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
   }
   .success-check-ring {
-    animation: success-check-ring 0.9s ease-out 0.15s both;
+    animation: success-check-ring 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+  }
+  .success-check-path {
+    stroke-dasharray: 20;
+    stroke-dashoffset: 20;
+    animation: success-check-draw 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.65s forwards;
   }
 }
 
 @keyframes success-check-pop {
   0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.15); opacity: 1; }
+  70% { transform: scale(1.08); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes success-check-ring {
-  0% { transform: scale(0.8); opacity: 0.5; }
+  0% { transform: scale(0.8); opacity: 0.45; }
   100% { transform: scale(1.7); opacity: 0; }
+}
+
+@keyframes success-check-draw {
+  to { stroke-dashoffset: 0; }
 }

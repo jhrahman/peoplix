@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { LeaveRequest, LeaveStatus } from "@/lib/types";
+import type { LeaveRequestSummary, LeaveStatus } from "@/lib/types";
 import { leaveDays } from "@/lib/leave";
 import { ApplyLeaveDialog } from "@/components/leave/apply-leave-dialog";
 
@@ -22,7 +22,7 @@ const STATUS_VARIANT: Record<LeaveStatus, "secondary" | "default" | "destructive
   rejected: "destructive",
 };
 
-export function MyLeaveTable({ requests }: { requests: LeaveRequest[] }) {
+export function MyLeaveTable({ requests }: { requests: LeaveRequestSummary[] }) {
   const router = useRouter();
   const [cancelingId, setCancelingId] = useState<string | null>(null);
 

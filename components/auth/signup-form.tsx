@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,10 +47,22 @@ export function SignupForm() {
   if (submitted) {
     return (
       <div className="flex flex-col items-center gap-4 py-2 text-center" data-testid="signup-success">
+        <h1 className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text font-heading text-2xl font-semibold tracking-tight text-transparent">
+          Request Submitted
+        </h1>
         <div className="relative flex size-16 items-center justify-center">
           <span className="success-check-ring absolute inset-0 rounded-full bg-primary/40" />
           <div className="success-check-badge relative flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
-            <Check className="size-8" strokeWidth={3} />
+            <svg viewBox="0 0 24 24" className="size-8" fill="none">
+              <path
+                d="M5 13l4 4L19 7"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="success-check-path"
+              />
+            </svg>
           </div>
         </div>
         <p className="max-w-xs text-sm text-muted-foreground">
@@ -68,6 +79,12 @@ export function SignupForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" data-testid="signup-form">
+      <div className="mb-2 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">Request access</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Submit your details for Admin approval.
+        </p>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="full_name">Full name</Label>
         <Input

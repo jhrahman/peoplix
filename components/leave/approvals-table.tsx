@@ -12,10 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { LeaveRequest } from "@/lib/types";
+import type { LeaveRequestSummary } from "@/lib/types";
 import { leaveDays } from "@/lib/leave";
 
-type LeaveRequestWithEmployee = LeaveRequest & { employee: { full_name: string } | null };
+type LeaveRequestWithEmployee = LeaveRequestSummary & { employee: { full_name: string } | null };
 type ReviewAction = "approved" | "rejected";
 
 export function ApprovalsTable({ requests }: { requests: LeaveRequestWithEmployee[] }) {

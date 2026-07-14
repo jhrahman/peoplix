@@ -30,6 +30,13 @@ export type LeaveRequest = {
   created_at: string;
 };
 
+// Columns actually rendered by leave-table/import-export components — pages
+// select only these instead of `*` to keep the leave page's queries light.
+export type LeaveRequestSummary = Pick<
+  LeaveRequest,
+  "id" | "leave_type" | "start_date" | "end_date" | "reason" | "status"
+>;
+
 export type LeaveBalance = {
   id: string;
   employee_id: string;
@@ -41,6 +48,11 @@ export type LeaveBalance = {
   annual_total: number;
   annual_used: number;
 };
+
+export type LeaveBalanceSummary = Pick<
+  LeaveBalance,
+  "year" | "casual_total" | "casual_used" | "sick_total" | "sick_used" | "annual_total" | "annual_used"
+>;
 
 export type Holiday = {
   id: string;
@@ -86,3 +98,10 @@ export type OvertimeRequest = {
   reviewed_at: string | null;
   created_at: string;
 };
+
+// Columns actually rendered by overtime-table/summary components — pages
+// select only these instead of `*` to keep the overtime page's queries light.
+export type OvertimeRequestSummary = Pick<
+  OvertimeRequest,
+  "id" | "date" | "hours" | "reason" | "status"
+>;

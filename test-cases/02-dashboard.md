@@ -29,3 +29,12 @@ App URL: https://peoplix-hr.vercel.app/ (post-login landing page)
 | 16 | View the "Overtime this month" stat tile with pending entries | Account with 1+ pending overtime entries | Sublabel reads "N pending review" instead of "Approved hours" |
 | 17 | Log in as Admin and view the stat tile row below "Pending approvals" / "Checked in today" | Valid Admin account, 1+ pending overtime entries across employees | A third "Overtime approvals" tile is shown with the correct pending count |
 | 18 | Log in as HR and check for the "Overtime approvals" tile | Valid HR account | Tile is not shown — only Admin sees it, since only Admin can approve overtime |
+
+## Access requests widget (Admin only)
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 19 | Log in as Admin with 1+ pending sign-up requests, in the top stat-tile row beside "Hours this week" | Valid Admin account, 1+ pending `signup_requests` | An "Access requests" tile is shown with an orange gradient icon chip, correct pending count, and sublabel "Sign-up requests pending"; the top row widens to 5 columns on large screens to fit it |
+| 20 | Log in as HR or Employee and check for the "Access requests" tile | Valid HR or Employee account | Tile is not shown — Admin only, and the top row stays at its normal 4-column layout |
+| 21 | Log in as Admin with zero pending sign-up requests | Valid Admin account, no pending `signup_requests` rows | Tile still shows, with value "0" |
+| 22 | From the "Access requests" tile, navigate to the Employees page and approve/reject a pending request, then return to the Dashboard | Approve or reject one pending request | Tile's count decreases by one, reflecting the change without a stale cached value |

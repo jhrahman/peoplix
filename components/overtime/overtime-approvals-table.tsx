@@ -12,10 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { OvertimeRequest } from "@/lib/types";
+import type { OvertimeRequestSummary } from "@/lib/types";
 import { formatOvertimeHours } from "@/lib/overtime";
 
-type OvertimeRequestWithEmployee = OvertimeRequest & { employee: { full_name: string } | null };
+type OvertimeRequestWithEmployee = OvertimeRequestSummary & { employee: { full_name: string } | null };
 type ReviewAction = "approved" | "rejected";
 
 export function OvertimeApprovalsTable({ requests }: { requests: OvertimeRequestWithEmployee[] }) {

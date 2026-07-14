@@ -32,16 +32,24 @@ Automated testing is explicitly out of scope for this repo — planned separatel
 No self-service account creation. Visitors can submit a sign-up *request* from
 `/signup` (name/email/dept/designation/mobile), but this only writes to a
 `signup_requests` table - `auth.users`/`profiles` are untouched until an Admin
-approves it from Settings, at which point the account is created via the
-Supabase Admin API exactly as with Admin-created employees (see §9).
+approves it from a **Pending Sign Up Requests** panel at the top of the
+**Employees** page (Admin-only — not HR, unlike most Admin/HR-gated screens
+here), at which point the account is created via the Supabase Admin API
+exactly as with Admin-created employees (see §5). Approve/Reject show a live
+"Approving…"/"Rejecting…" state while the request is in flight, and the
+Dashboard gets an Admin-only orange-gradient stat tile for the pending count.
 
 ---
 
 ## 2. Modules (v1 Scope)
 1. **Auth** — login, protected routes, role-based access control
-2. **Employee directory/profiles** — CRUD (Admin/HR), read-only self-view (Employee). A small
-   hardcoded allowlist (`lib/protected-employees.ts`) marks accounts that can never be deleted,
-   even by Admin — checked server-side in the delete route, not just hidden in the UI.
+2. **Employee directory/profiles** — CRUD (Admin/HR) from the Employees page. Every role, including
+   Employee, can also self-edit their own Full name, Phone, Department, and Designation from
+   **Settings** (via `updateOwnProfile`, RLS-restricted to each user's own row). Email is set once
+   at account creation and is never editable afterward by anyone, including Admin/HR editing another
+   employee's row. A small hardcoded allowlist (`lib/protected-employees.ts`) marks accounts that
+   can never be deleted, even by Admin — checked server-side in the delete route, not just hidden
+   in the UI.
 3. **Leave management** — apply, approve/reject, balance tracking
    - Leave types: Casual, Sick, Annual (standard BD types)
 4. **Bangladesh holiday calendar** — seeded default holidays + Admin/HR can add/edit
@@ -144,7 +152,7 @@ only **Admin** may approve/reject — HR can view all entries but not act on the
     /leave                    → apply + my requests (all) / approvals (HR/Admin)
     /attendance                → check-in/out + history
     /holidays                  → calendar view + admin edit
-    /settings                  → profile edit
+    /settings                  → profile self-edit (name/phone/department/designation), change password, Danger Zone
   /api
     /leave/route.ts, /leave/[id]/route.ts
     /attendance/route.ts
@@ -182,7 +190,17 @@ CLAUDE.md           → project conventions for AI-assisted development
   - **Requires one Supabase dashboard step**: add your app's origin(s) to
     **Authentication → URL Configuration → Redirect URLs** (e.g. `http://localhost:3000/**` for
     dev, plus your Vercel URL once deployed) — Supabase refuses to redirect to a URL that isn't
-    allow-listed there.
+    allow-listed there, and silently falls back to the project's Site URL instead (which can look
+    like a broken/misdirected link if you're not expecting it).
+  - **Email delivery**: this project sends transactional email (invite/password-setup) through a
+    custom SMTP provider (Brevo) configured under **Authentication → Emails → SMTP Settings**,
+    since Supabase's built-in email sending is rate-limited and not meant for production volume.
+    The "Reset Password" template under **Authentication → Email Templates** is a Peoplix-branded
+    HTML email (table-based layout, inline styles, teal gradient header/button matching the app's
+    accent) rather than the plain default Supabase template.
+  - **Self-service password change**: logged-in users can also change their password directly from
+    **Settings** (`supabase.auth.updateUser({ password })`) without going through the email/recovery
+    flow at all, since they already have an active session.
 
 ---
 

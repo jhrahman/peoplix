@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { OvertimeRequest } from "@/lib/types";
+import type { OvertimeRequestSummary } from "@/lib/types";
 import { todayInDhaka } from "@/lib/attendance";
 
-export function OvertimeSummaryCards({ requests }: { requests: OvertimeRequest[] }) {
+export function OvertimeSummaryCards({ requests }: { requests: OvertimeRequestSummary[] }) {
   const currentMonth = todayInDhaka().slice(0, 7);
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;

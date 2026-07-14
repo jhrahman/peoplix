@@ -49,30 +49,34 @@ export function EmployeeFormDialog({ employee, trigger }: EmployeeFormDialogProp
     const url = isEdit ? `/api/employees/${employee!.id}` : "/api/employees";
     const method = isEdit ? "PATCH" : "POST";
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        full_name: fullName,
-        email,
-        phone,
-        department,
-        designation,
-        role,
-      }),
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          phone,
+          department,
+          designation,
+          role,
+        }),
+      });
 
-    const json = await res.json();
+      const json = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      setError(json.error ?? "Something went wrong");
+      if (!res.ok) {
+        setError(json?.error ?? `Something went wrong (${res.status})`);
+        return;
+      }
+
+      setOpen(false);
+      router.refresh();
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setLoading(false);
-    setOpen(false);
-    router.refresh();
   }
 
   return (

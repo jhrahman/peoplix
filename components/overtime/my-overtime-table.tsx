@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { OvertimeRequest, OvertimeStatus } from "@/lib/types";
+import type { OvertimeRequestSummary, OvertimeStatus } from "@/lib/types";
 import { formatOvertimeHours } from "@/lib/overtime";
 import { LogOvertimeDialog } from "@/components/overtime/log-overtime-dialog";
 
@@ -22,7 +22,7 @@ const STATUS_VARIANT: Record<OvertimeStatus, "secondary" | "default" | "destruct
   rejected: "destructive",
 };
 
-export function MyOvertimeTable({ requests }: { requests: OvertimeRequest[] }) {
+export function MyOvertimeTable({ requests }: { requests: OvertimeRequestSummary[] }) {
   const router = useRouter();
   const [cancelingId, setCancelingId] = useState<string | null>(null);
 

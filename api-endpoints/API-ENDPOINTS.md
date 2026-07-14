@@ -17,6 +17,7 @@ Do not put real passwords, service-role keys, or production secrets in this file
 - `LeaveType` = `"casual" | "sick" | "annual"`
 - `LeaveStatus` = `"pending" | "approved" | "rejected"`
 - `OvertimeStatus` = `"pending" | "approved" | "rejected"`
+- `SignupRequestStatus` = `"pending" | "approved" | "rejected"`
 
 ---
 
@@ -346,7 +347,81 @@ This route serves two different actions, disambiguated by the request body shape
 
 ---
 
-## 7. Team Directory — no dedicated API route
+## 7. Signup Requests — `/api/signup-requests`
+
+Public self-service access requests submitted from `/signup` (no session required to submit). Reviewing
+them is **Admin only** — not HR, unlike every other Admin/HR-gated resource in this app.
+
+### GET `/api/signup-requests`
+- **Auth**: Admin only
+- **Query params**: none
+- **Success (200)**: `{ "data": SignupRequest[] }`, ordered by `created_at` descending
+- **Errors**: `401`, `403`, `500`
+
+### POST `/api/signup-requests`
+- **Auth**: none — publicly callable from the sign-up page
+- **Body (JSON)**:
+  ```json
+  {
+    "full_name": "Jane Doe",
+    "email": "jane.doe@example.com",
+    "department": "Engineering",
+    "designation": "Software Engineer",
+    "mobile": "+8801XXXXXXXXX"
+  }
+  ```
+  - Required: `full_name`, `email`
+  - `department`, `designation`, `mobile` optional
+- **Behavior**: Inserts a row into `signup_requests` with `status: "pending"`. Does **not** touch
+  `auth.users`/`profiles` — no account exists until an Admin approves it.
+- **Success (201)**: `{ "data": { "submitted": true } }`
+- **Errors**:
+  - `400` — missing `full_name`/`email`
+  - `409` — a pending request already exists for that email (unique constraint)
+
+### PATCH `/api/signup-requests/{id}`
+- **Auth**: Admin only
+- **Path param**: `id` — signup request UUID
+- **Body (JSON)**:
+  ```json
+  { "status": "approved" }
+  ```
+  - `status` must be `"approved"` or `"rejected"`
+- **Behavior**: Only a `pending` request can be reviewed.
+  - On `"approved"`: creates a Supabase Auth user (random password, email pre-confirmed), copies
+    `department`/`designation`/`mobile` onto the new `profiles` row, seeds a leave balance row for
+    the current year, and sends a password-setup email (`resetPasswordForEmail` → `/reset-password`)
+    — identical downstream behavior to `POST /api/employees`.
+  - If an auth user for that email already exists (e.g. a prior attempt partially completed), reuses
+    that existing user instead of failing with a duplicate-email error.
+  - Either way, marks the `signup_requests` row with `reviewed_by`/`reviewed_at`.
+- **Success (200)**: `{ "data": SignupRequest }` (updated row)
+- **Errors**:
+  - `400` — invalid `status`, request not currently `pending`, or user creation failed
+  - `401`, `403`
+  - `404` — request not found
+  - `500` — unexpected failure partway through approval (message included)
+
+---
+
+## 8. Settings (profile self-edit + password) — no dedicated API route
+
+`/settings` doesn't go through `/api/*` at all:
+- **Profile edit** (full name, phone, department, designation — email is never editable) is a Next.js
+  **Server Action** (`updateOwnProfile` in `lib/actions/profile.ts`), called directly from the form,
+  not a REST endpoint. RLS (`profiles_update_own_or_staff`) already restricts this to the caller's own
+  row regardless of role.
+- **Change password** calls Supabase Auth directly from the client (`supabase.auth.updateUser({ password })`)
+  — same mechanism `/reset-password` uses, just without the recovery-token step since the user already
+  has an active session.
+
+If you need to exercise either via an API client rather than the UI, you'll need a valid Supabase
+session and must call these through the Supabase client SDK/REST directly — there is nothing under
+`/api/` to call for this feature.
+
+---
+
+## 9. Team Directory — no dedicated API route
 
 `/directory` is a Server Component that queries the `profiles` table directly through
 Supabase (no `/api/*` route backs it). Since migration `0006_profiles_directory_select.sql`,
@@ -384,4 +459,8 @@ the logged-in user's access token — there is nothing under `/api/` to call for
 | PATCH | `/api/overtime/{id}` | Admin only (`status` body) or Session (owner, edit body) | Approve/reject a pending entry, or self-edit your own pending entry |
 | DELETE | `/api/overtime/{id}` | Session | Delete own pending overtime entry (or Admin) |
 | POST | `/api/admin/clear-database` | Admin only | Wipe leave/holiday/attendance/overtime data (not accounts) |
-| — | `/directory` (no API route) | Session | Reads `profiles` directly via Supabase — see §7 |
+| GET | `/api/signup-requests` | Admin only | List pending sign-up/access requests |
+| POST | `/api/signup-requests` | None (public) | Submit a self-service access request from `/signup` |
+| PATCH | `/api/signup-requests/{id}` | Admin only | Approve (creates account + sends invite email) or reject a request |
+| — | `/settings` (no API route) | Session | Server Action + direct Supabase Auth calls — see §8 |
+| — | `/directory` (no API route) | Session | Reads `profiles` directly via Supabase — see §9 |

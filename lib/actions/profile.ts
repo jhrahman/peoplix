@@ -15,6 +15,8 @@ export async function updateOwnProfile(formData: FormData) {
 
   const full_name = String(formData.get("full_name") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
+  const department = String(formData.get("department") ?? "").trim();
+  const designation = String(formData.get("designation") ?? "").trim();
 
   if (!full_name) {
     throw new Error("Full name is required");
@@ -22,7 +24,12 @@ export async function updateOwnProfile(formData: FormData) {
 
   const { error } = await supabase
     .from("profiles")
-    .update({ full_name, phone: phone || null })
+    .update({
+      full_name,
+      phone: phone || null,
+      department: department || null,
+      designation: designation || null,
+    })
     .eq("id", user.id);
 
   if (error) {

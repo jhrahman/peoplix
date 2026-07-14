@@ -3,6 +3,11 @@
 App URL: https://peoplix-hr.vercel.app/employees
 Access: Admin and HR only.
 
+> Admins also see a **Pending Sign Up Requests** panel at the top of this page, for reviewing
+> self-service access requests submitted from `/signup`. That flow (public request form,
+> Approve/Reject, resulting invite email) has its own dedicated file:
+> [`10-signup-requests.md`](10-signup-requests.md).
+
 ## Access control
 
 | # | Action | Test Data | Expected Result |

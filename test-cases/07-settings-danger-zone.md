@@ -6,13 +6,25 @@ App URL: https://peoplix-hr.vercel.app/settings
 
 | # | Action | Test Data | Expected Result |
 |---|--------|-----------|------------------|
-| 1 | Open the Settings page | Any valid account | "Your profile" card shows Email (read-only), Full name, Phone, and Department (read-only) fields |
-| 2 | Attempt to edit the Email field | Click into the Email input | Field is disabled and cannot be changed from this page |
-| 3 | Attempt to edit the Department field | Click into the Department input | Field is disabled and cannot be changed from this page |
+| 1 | Open the Settings page | Any valid account | "Your profile" card shows Email (read-only), Full name, Department, Designation, and Phone fields |
+| 2 | Attempt to edit the Email field | Click into the Email input | Field is disabled, shows a "Email can't be changed." note, and cannot be edited from this page |
+| 3 | Update the Department field and click "Save changes" | Department: "Updated Test Department" | Value is saved and persists after a page refresh |
+| 3a | Update the Designation field and click "Save changes" | Designation: "Updated Test Title" | Value is saved and persists after a page refresh |
 | 4 | Update the Full name field and click "Save changes" | Full name: "Updated Test Name" | Confirmation of save (page reflects new name); sidebar/navbar display name updates to match |
 | 5 | Update the Phone field and click "Save changes" | Phone: "+8801XXXXXXXXX" (test value) | Value is saved and persists after a page refresh |
 | 6 | Clear the required Full name field entirely and try to save | Full name: (blank) | Browser's required-field validation blocks submission |
-| 7 | Log in as a different role (Employee, HR, Admin) and open Settings | Each role in turn | All three roles can view and edit their own profile identically; no role-specific profile fields differ |
+| 7 | Log in as a different role (Employee, HR, Admin) and open Settings | Each role in turn | All three roles can view and edit their own profile identically (including Department/Designation); no role-specific profile fields differ |
+| 7a | Resize the browser to a mobile width (e.g. 375px) while on Settings | Viewport resize | Department/Designation fields stack into a single column (from a two-column layout on wider screens); no overlapping content or horizontal scroll |
+
+## Change password
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 7b | Open the "Change password" card | Any valid account | Card shows New password and Confirm password fields and an "Update password" button; no current-password field is required since the user already has an active session |
+| 7c | Submit a new password shorter than 8 characters | New password: "abc123" | Inline error: "Password must be at least 8 characters."; no request is sent |
+| 7d | Submit mismatched New password / Confirm password values | New password: "TestPass123", Confirm: "TestPass124" | Inline error: "Passwords don't match."; no request is sent |
+| 7e | Submit matching, valid-length passwords | New password/Confirm: "TestPass123" (8+ chars, matching) | Button shows "Updating..." while in flight, then a success toast ("Password updated."); both fields clear |
+| 7f | Log out and log back in using the new password | Email + newly set password | Login succeeds with the new password |
 
 ## Danger Zone — visibility & access control
 

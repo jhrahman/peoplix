@@ -6,9 +6,10 @@ import { todayInDhaka } from "@/lib/attendance";
 import { CheckInOutCard } from "@/components/attendance/check-in-out-card";
 import { AttendanceHistoryTable } from "@/components/attendance/attendance-history-table";
 import { AttendanceHistoryFilter } from "@/components/attendance/attendance-history-filter";
-import { TeamAttendanceToday } from "@/components/attendance/team-attendance-today";
+import { TeamAttendanceTodaySection } from "@/components/attendance/team-attendance-today-section";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const CARD_SKELETON = <div className="glass-panel h-56 animate-pulse rounded-xl" />;
 
 export default async function AttendancePage({
   searchParams,
@@ -40,7 +41,7 @@ export default async function AttendancePage({
     historyQuery = historyQuery.limit(30);
   }
 
-  const [{ data: todayRecord }, { data: history }, teamTodayResult] = await Promise.all([
+  const [{ data: todayRecord }, { data: history }] = await Promise.all([
     supabase
       .from("attendance")
       .select("*")
@@ -48,17 +49,7 @@ export default async function AttendancePage({
       .eq("date", today)
       .maybeSingle<Attendance>(),
     historyQuery.returns<Attendance[]>(),
-    isStaff
-      ? supabase
-          .from("attendance")
-          .select("*, employee:profiles!attendance_employee_id_fkey(full_name)")
-          .eq("date", today)
-          .order("check_in")
-      : Promise.resolve({ data: null }),
   ]);
-
-  const teamToday: (Attendance & { employee: { full_name: string } | null })[] =
-    teamTodayResult.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -76,15 +67,12 @@ export default async function AttendancePage({
         </CardContent>
       </Card>
 
+      {/* Staff-only section streams in independently so a non-staff user's
+          own history (above) never waits on this join. */}
       {isStaff && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Team attendance today</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TeamAttendanceToday records={teamToday} />
-          </CardContent>
-        </Card>
+        <Suspense fallback={CARD_SKELETON}>
+          <TeamAttendanceTodaySection today={today} />
+        </Suspense>
       )}
     </div>
   );

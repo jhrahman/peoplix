@@ -13,12 +13,6 @@ export default function SignupPage() {
 
       <main className="flex flex-1 items-center justify-center px-6 py-8">
         <div className="glass-panel w-full max-w-sm rounded-2xl p-8">
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">Request access</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Submit your details for Admin approval.
-            </p>
-          </div>
           <SignupForm />
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}

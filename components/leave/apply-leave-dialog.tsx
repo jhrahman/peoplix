@@ -21,10 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { LeaveRequest, LeaveType } from "@/lib/types";
+import type { LeaveRequestSummary, LeaveType } from "@/lib/types";
 import { leaveDays } from "@/lib/leave";
 
-export function ApplyLeaveDialog({ request }: { request?: LeaveRequest }) {
+export function ApplyLeaveDialog({ request }: { request?: LeaveRequestSummary }) {
   const router = useRouter();
   const isEdit = Boolean(request);
   const [open, setOpen] = useState(false);

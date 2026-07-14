@@ -27,6 +27,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input id="email" value={profile.email} disabled data-testid="settings-email" />
+        <p className="text-xs text-muted-foreground">Email can't be changed.</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="full_name">Full name</Label>
@@ -38,6 +39,26 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           data-testid="settings-full-name"
         />
       </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="department">Department</Label>
+          <Input
+            id="department"
+            name="department"
+            defaultValue={profile.department ?? ""}
+            data-testid="settings-department"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="designation">Designation</Label>
+          <Input
+            id="designation"
+            name="designation"
+            defaultValue={profile.designation ?? ""}
+            data-testid="settings-designation"
+          />
+        </div>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="phone">Phone</Label>
         <Input
@@ -47,16 +68,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           data-testid="settings-phone"
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="department">Department</Label>
-        <Input
-          id="department"
-          value={profile.department ?? "—"}
-          disabled
-          data-testid="settings-department"
-        />
-      </div>
-      <Button type="submit" disabled={isPending} data-testid="settings-save">
+      <Button type="submit" disabled={isPending} className="w-full sm:w-auto" data-testid="settings-save">
         {isPending ? "Saving..." : "Save changes"}
       </Button>
     </form>

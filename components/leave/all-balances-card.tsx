@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { ExportMenu } from "@/components/import-export/export-menu";
 import type { Column } from "@/lib/import-export";
-import type { LeaveBalance } from "@/lib/types";
+import type { LeaveBalanceSummary } from "@/lib/types";
 
 const COLUMNS: Column[] = [
   { key: "employee", label: "Employee" },
@@ -22,7 +22,7 @@ const COLUMNS: Column[] = [
 export function AllBalancesCard({
   balances,
 }: {
-  balances: (LeaveBalance & { employee: { full_name: string } | null })[];
+  balances: (LeaveBalanceSummary & { employee: { full_name: string } | null })[];
 }) {
   const rows = balances.map((b) => ({
     employee: b.employee?.full_name ?? "",

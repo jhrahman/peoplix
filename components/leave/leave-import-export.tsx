@@ -4,7 +4,7 @@ import { ExportMenu } from "@/components/import-export/export-menu";
 import { ImportDialog } from "@/components/import-export/import-dialog";
 import type { Column } from "@/lib/import-export";
 import { leaveDays } from "@/lib/leave";
-import type { LeaveRequest, LeaveType } from "@/lib/types";
+import type { LeaveRequestSummary, LeaveType } from "@/lib/types";
 
 const EXPORT_COLUMNS: Column[] = [
   { key: "employee", label: "Employee" },
@@ -76,7 +76,7 @@ async function importRow(data: LeaveImportRow) {
 export function LeaveImportExport({
   requests,
 }: {
-  requests: (LeaveRequest & { employee: { full_name: string } | null })[];
+  requests: (LeaveRequestSummary & { employee: { full_name: string } | null })[];
 }) {
   const exportRows = requests.map((r) => ({
     employee: r.employee?.full_name ?? "",

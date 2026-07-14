@@ -21,16 +21,18 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 
 ## ✨ Features
 
-- **Authentication** — Supabase Auth session-cookie login, forgot-password / invite flow (`/reset-password`), no public sign-up (accounts are provisioned by Admin/HR).
+- **Authentication** — Supabase Auth session-cookie login, forgot-password / invite flow (`/reset-password`), no open account creation — accounts are provisioned by Admin/HR, or self-requested via `/signup` and gated behind Admin approval (see **Access requests** below).
+- **Access requests** — anyone can submit a self-service request from `/signup` (name/email/department/designation/mobile) with an animated success confirmation; it only lands in a `signup_requests` table — no account exists until an Admin reviews it from the Employees page. Approve/Reject buttons show a live "Approving…"/"Rejecting…" state, and a dedicated orange-gradient dashboard stat tile surfaces the pending count to Admins. Approving creates the account exactly like an Admin-added employee and sends the same branded password-setup email.
 - **Role-based access (RBAC)** — `admin`, `hr`, `employee`, enforced by Postgres Row-Level Security *and* re-checked server-side in every API route (never trusted from the client alone).
-- **Dashboard** — at-a-glance stat tiles and charts for hours worked, overtime, leave balance, upcoming holidays, and account role, plus Admin/HR-only approval-queue counters.
-- **Employee management** — Admin/HR can add, edit, and remove employees; assign roles; department/designation fields. A small hardcoded allowlist of protected accounts can never be removed, even by Admin, re-checked server-side.
+- **Dashboard** — at-a-glance stat tiles and charts for hours worked, overtime, leave balance, upcoming holidays, and account role, plus Admin/HR-only approval-queue counters (leave, overtime, and — Admin only — pending access requests).
+- **Employee management** — Admin/HR can add, edit, and remove employees; assign roles; department/designation fields. Adding an employee sends the same branded invite email as an approved access request. A small hardcoded allowlist of protected accounts can never be removed, even by Admin, re-checked server-side.
 - **Team directory** — read-only, searchable (name/department/designation/email) profile listing visible to **every** role — unlike the Employees page, any employee can look up a colleague's contact details. One-click copy-to-clipboard on each email address, and an instant clear (✕) button on the search box.
 - **Leave management** — apply for Casual/Sick/Annual leave, live day-count preview, Admin/HR approval queue, automatic balance deduction on approval, per-employee balance view, and self-service edit/cancel while a request is still pending (fix a typo without waiting on HR).
 - **Overtime tracking** — log overtime manually (date + hours in 0.5h steps, one entry per day), Admin-only approval (HR can view but not approve), self-service edit/cancel while still pending, a per-employee summary (pending/approved/rejected) and matching dashboard widgets.
 - **Holiday calendar** — shared company holiday list, recurring-holiday support, and a one-click "generate default Bangladesh public holidays for this year" recovery action available to any signed-in user.
 - **Attendance** — one-click check-in/out with all times shown in Bangladesh Standard Time (12-hour AM/PM, regardless of the viewer's own device timezone), real-time in-flight/success feedback on the check-in/out buttons, automatic duration calculation, and a self-service manual override/correction (e.g. fix an accidental early checkout) — no approval step required. Any role can delete their own **today's** record to re-check-in; past records can't be deleted by anyone, including Admin. History is filterable by date range (persisted in the URL, so it survives a refresh).
 - **Import / Export** — CSV and XLSX for Employees, Leave requests, and Holidays, with a downloadable template, row-by-row validation preview, and per-row import status.
+- **Settings** — every role can self-edit their own Full name, Phone, Department, and Designation (Email is never editable), plus change their own password directly — no need to go through the forgot-password email flow just to update a password.
 - **Danger Zone** — Admin-only, type-to-confirm wipe of all leave/holiday/attendance/overtime data; employee accounts are never touched.
 - **Polish** — page-transition loading states, spinner feedback on in-flight approve/reject actions, a proper pointer cursor on every button, responsive/mobile layout, empty states everywhere, `data-testid` attributes on every interactive element for automated testing.
 - **Brand assets** — code-generated favicon, apple-touch icon, and Open Graph image (teal gradient mark, no external design tool).
@@ -52,19 +54,20 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 ```
 app/
   (auth)/login/            Login page + forgot-password dialog
+  (auth)/signup/            Public self-service access request form
   (auth)/reset-password/   Invite / password-reset landing page
   (dashboard)/             Authenticated app shell (sidebar, navbar, theme toggle)
     page.tsx                 Dashboard widgets
-    employees/                Employee management (Admin/HR)
+    employees/                Employee management (Admin/HR) + pending access requests panel (Admin)
     directory/                 Read-only team directory (all roles)
     leave/                     Apply, approvals, balances
     overtime/                  Log, summary, Admin-only approvals
     holidays/                  Holiday calendar
     attendance/                Check-in/out, history, overrides
-    settings/                  Profile + Danger Zone
+    settings/                  Profile self-edit (name/phone/department/designation), change password, Danger Zone
   api/                      REST endpoints, one resource per folder
-    employees/, leave/, holidays/, attendance/, overtime/, admin/clear-database/
-    (directory/ has no API route — reads profiles directly, see api-endpoints/API-ENDPOINTS.md §7)
+    employees/, leave/, holidays/, attendance/, overtime/, admin/clear-database/, signup-requests/
+    (directory/ and settings/ have no API route — see api-endpoints/API-ENDPOINTS.md §8-9)
 components/
   ui/            shadcn primitives (Button, Card, Dialog, Table, ...)
   layout/        Sidebar, Navbar, ThemeToggle, page loader
@@ -109,7 +112,9 @@ supabase start
 - **HR** — manages employees, approves leave, edits holidays
 - **Employee** — views own profile, applies for leave, checks in/out, views holidays
 
-No public sign-up — Admin/HR creates employee accounts, which triggers an invite email to set a password.
+No open account creation — Admin/HR creates employee accounts directly, or anyone can submit a
+self-service request at `/signup` for an Admin to approve. Either path triggers the same branded
+invite email to set a password.
 
 ## ☁️ Deployment
 
@@ -124,7 +129,14 @@ In the Vercel project's **Settings → Environment Variables**, set:
 
 (same values as your local `.env.local`). Then add the deployed URL to Supabase's
 **Authentication → URL Configuration → Redirect URLs** (e.g. `https://your-app.vercel.app/**`) so
-the invite/forgot-password flow (`/reset-password`) works in production too.
+the invite/forgot-password flow (`/reset-password`) works in production too — Supabase silently
+falls back to the project's Site URL if the exact `redirect_to` isn't allow-listed, which otherwise
+looks like the reset link is just broken.
+
+**Email delivery**: Supabase's built-in email sending is rate-limited and not meant for production
+volume, so this project sends transactional email (invite/password-setup, access-request approval)
+through a custom SMTP provider (Brevo) configured under **Authentication → Emails → SMTP Settings**,
+with a Peoplix-branded HTML template under **Authentication → Email Templates → Reset Password**.
 
 > ⚠️ `SUPABASE_SERVICE_ROLE_KEY` bypasses Row-Level Security. Keep it a **server-only** env var —
 > never prefix it with `NEXT_PUBLIC_`, never import `lib/supabase/admin.ts` from a Client Component.
@@ -146,6 +158,7 @@ and both are structured so they can be turned directly into an automated suite (
   - [`07-settings-danger-zone.md`](test-cases/07-settings-danger-zone.md) — profile edit, Danger Zone RBAC + confirmation flow
   - [`08-overtime.md`](test-cases/08-overtime.md) — logging, validation, Admin-only approvals, dashboard widgets
   - [`09-directory.md`](test-cases/09-directory.md) — all-roles visibility, read-only listing, search
+  - [`10-signup-requests.md`](test-cases/10-signup-requests.md) — public request form, duplicate handling, Admin-only approve/reject, resulting invite email
 
   Every interactive element in the UI carries a `data-testid` attribute matching these test cases,
   so each row maps cleanly onto a Playwright step (locator → action → assertion).

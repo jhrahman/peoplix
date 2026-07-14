@@ -123,7 +123,7 @@ export function ImportDialog<T>({
           Import
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Import {resourceLabel}</DialogTitle>
         </DialogHeader>
