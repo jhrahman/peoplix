@@ -160,4 +160,23 @@
   .glass-interactive {
     @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_1px_0_0_rgba(255,255,255,0.4)_inset,0_16px_40px_-12px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset,0_16px_40px_-8px_rgba(0,0,0,0.7)];
   }
+
+  /* One-shot pop + ring pulse for the signup success checkmark. */
+  .success-check-badge {
+    animation: success-check-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .success-check-ring {
+    animation: success-check-ring 0.9s ease-out 0.15s both;
+  }
+}
+
+@keyframes success-check-pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes success-check-ring {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(1.7); opacity: 0; }
 }

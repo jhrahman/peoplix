@@ -40,55 +40,81 @@ export async function PATCH(
 
   const admin = createAdminClient();
 
-  if (status === "approved") {
-    const { data: created, error: createError } = await admin.auth.admin.createUser({
-      email: existing.email,
-      email_confirm: true,
-      password: crypto.randomUUID(),
-      user_metadata: { full_name: existing.full_name, role: "employee" },
-    });
+  try {
+    if (status === "approved") {
+      // A prior attempt may have already created the auth user but failed
+      // before the signup_requests row was marked reviewed — reuse it
+      // instead of erroring out on "already registered".
+      let userId: string;
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email: existing.email,
+        email_confirm: true,
+        password: crypto.randomUUID(),
+        user_metadata: { full_name: existing.full_name, role: "employee" },
+      });
 
-    if (createError || !created.user) {
-      return NextResponse.json(
-        { error: createError?.message ?? "Failed to create user" },
-        { status: 400 },
-      );
+      if (createError || !created.user) {
+        if (createError?.code === "email_exists") {
+          const { data: existingUsers, error: listError } = await admin.auth.admin.listUsers();
+          const match = existingUsers?.users.find((u) => u.email === existing.email);
+          if (listError || !match) {
+            return NextResponse.json(
+              { error: createError?.message ?? "Failed to create user" },
+              { status: 400 },
+            );
+          }
+          userId = match.id;
+        } else {
+          return NextResponse.json(
+            { error: createError?.message ?? "Failed to create user" },
+            { status: 400 },
+          );
+        }
+      } else {
+        userId = created.user.id;
+      }
+
+      const { error: profileError } = await admin
+        .from("profiles")
+        .update({
+          department: existing.department,
+          designation: existing.designation,
+          phone: existing.mobile,
+        })
+        .eq("id", userId);
+
+      if (profileError) {
+        return NextResponse.json({ error: profileError.message }, { status: 500 });
+      }
+
+      await ensureLeaveBalance(admin, userId, new Date().getFullYear());
+
+      const { origin } = new URL(request.url);
+      const { error: resetError } = await admin.auth.resetPasswordForEmail(existing.email, {
+        redirectTo: `${origin}/reset-password`,
+      });
+      if (resetError) {
+        console.error("Failed to send password setup email:", resetError.message);
+      }
     }
 
-    const { error: profileError } = await admin
-      .from("profiles")
-      .update({
-        department: existing.department,
-        designation: existing.designation,
-        phone: existing.mobile,
-      })
-      .eq("id", created.user.id);
+    const { data: updated, error: updateError } = await auth.supabase
+      .from("signup_requests")
+      .update({ status, reviewed_by: auth.user.id, reviewed_at: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single();
 
-    if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
 
-    await ensureLeaveBalance(admin, created.user.id, new Date().getFullYear());
-
-    const { origin } = new URL(request.url);
-    const { error: resetError } = await admin.auth.resetPasswordForEmail(existing.email, {
-      redirectTo: `${origin}/reset-password`,
-    });
-    if (resetError) {
-      console.error("Failed to send password setup email:", resetError.message);
-    }
+    return NextResponse.json({ data: updated });
+  } catch (err) {
+    console.error("Failed to review signup request:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to review signup request" },
+      { status: 500 },
+    );
   }
-
-  const { data: updated, error: updateError } = await auth.supabase
-    .from("signup_requests")
-    .update({ status, reviewed_by: auth.user.id, reviewed_at: new Date().toISOString() })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 400 });
-  }
-
-  return NextResponse.json({ data: updated });
 }

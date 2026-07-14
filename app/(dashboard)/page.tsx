@@ -21,8 +21,8 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <Suspense fallback={<DashboardOverviewSkeleton />}>
-        <DashboardOverview userId={user!.id} profile={profile!} />
+      <Suspense fallback={<DashboardOverviewSkeleton isAdmin={isAdmin} />}>
+        <DashboardOverview userId={user!.id} profile={profile!} isAdmin={isAdmin} />
       </Suspense>
 
       {isStaff && (

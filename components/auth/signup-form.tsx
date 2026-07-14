@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,10 +47,22 @@ export function SignupForm() {
 
   if (submitted) {
     return (
-      <p className="text-center text-sm text-muted-foreground" data-testid="signup-success">
-        Thanks! Your request has been submitted. An admin will review it and email you a link
-        to set your password once approved.
-      </p>
+      <div className="flex flex-col items-center gap-4 py-2 text-center" data-testid="signup-success">
+        <div className="relative flex size-16 items-center justify-center">
+          <span className="success-check-ring absolute inset-0 rounded-full bg-primary/40" />
+          <div className="success-check-badge relative flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg">
+            <Check className="size-8" strokeWidth={3} />
+          </div>
+        </div>
+        <p className="max-w-xs text-sm text-muted-foreground">
+          Thanks! Access Request Submitted. A System Admin will review the request soon.
+        </p>
+        <Button asChild className="w-full">
+          <Link href="/login" data-testid="signup-success-ok">
+            OK
+          </Link>
+        </Button>
+      </div>
     );
   }
 

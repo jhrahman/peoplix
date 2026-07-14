@@ -1,8 +1,9 @@
-import { CalendarDays, Clock, PartyPopper, Timer } from "lucide-react";
+import { CalendarDays, Clock, PartyPopper, Timer, UserPlus } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ensureLeaveBalance } from "@/lib/leave";
 import { hoursWorked } from "@/lib/attendance";
+import { cn } from "@/lib/utils";
 import type { Attendance, Holiday, OvertimeRequest, Profile } from "@/lib/types";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { LeaveBalanceMeters } from "@/components/dashboard/leave-balance-meters";
@@ -28,7 +29,15 @@ function isoDate(d: Date) {
   return ISO_DATE_FORMAT.format(d);
 }
 
-export async function DashboardOverview({ userId, profile }: { userId: string; profile: Profile }) {
+export async function DashboardOverview({
+  userId,
+  profile,
+  isAdmin = false,
+}: {
+  userId: string;
+  profile: Profile;
+  isAdmin?: boolean;
+}) {
   const supabase = await createClient();
 
   const year = new Date().getFullYear();
@@ -40,28 +49,39 @@ export async function DashboardOverview({ userId, profile }: { userId: string; p
   weekStart.setDate(weekStart.getDate() - 6);
   const weekStartIso = isoDate(weekStart);
 
-  const [{ data: weekAttendance }, { data: upcomingHolidays }, balance, { data: myOvertime }] =
-    await Promise.all([
-      supabase
-        .from("attendance")
-        .select("*")
-        .eq("employee_id", userId)
-        .gte("date", weekStartIso)
-        .returns<Attendance[]>(),
-      supabase
-        .from("holidays")
-        .select("*")
-        .gte("date", todayIso)
-        .order("date")
-        .limit(3)
-        .returns<Holiday[]>(),
-      ensureLeaveBalance(createAdminClient(), userId, year),
-      supabase
-        .from("overtime_requests")
-        .select("*")
-        .eq("employee_id", userId)
-        .returns<OvertimeRequest[]>(),
-    ]);
+  const [
+    { data: weekAttendance },
+    { data: upcomingHolidays },
+    balance,
+    { data: myOvertime },
+    { count: pendingSignupCount },
+  ] = await Promise.all([
+    supabase
+      .from("attendance")
+      .select("*")
+      .eq("employee_id", userId)
+      .gte("date", weekStartIso)
+      .returns<Attendance[]>(),
+    supabase
+      .from("holidays")
+      .select("*")
+      .gte("date", todayIso)
+      .order("date")
+      .limit(3)
+      .returns<Holiday[]>(),
+    ensureLeaveBalance(createAdminClient(), userId, year),
+    supabase
+      .from("overtime_requests")
+      .select("*")
+      .eq("employee_id", userId)
+      .returns<OvertimeRequest[]>(),
+    isAdmin
+      ? supabase
+          .from("signup_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending")
+      : Promise.resolve({ count: 0 }),
+  ]);
 
   const pendingOvertimeOwn = (myOvertime ?? []).filter((o) => o.status === "pending").length;
   const approvedOvertimeHoursThisMonth = (myOvertime ?? [])
@@ -100,7 +120,12 @@ export async function DashboardOverview({ userId, profile }: { userId: string; p
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-4 sm:grid-cols-2",
+          isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4",
+        )}
+      >
         <StatTile
           icon={Clock}
           label="Hours this week"
@@ -108,6 +133,15 @@ export async function DashboardOverview({ userId, profile }: { userId: string; p
           sublabel="Last 7 days"
           accent
         />
+        {isAdmin && (
+          <StatTile
+            icon={UserPlus}
+            label="Access requests"
+            value={String(pendingSignupCount ?? 0)}
+            sublabel="Sign-up requests pending"
+            tone="orange"
+          />
+        )}
         <StatTile
           icon={Timer}
           label="Overtime this month"

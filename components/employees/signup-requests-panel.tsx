@@ -11,28 +11,34 @@ export function SignupRequestsPanel({
   initialRequests: SignupRequest[];
 }) {
   const [requests, setRequests] = useState(initialRequests);
-  const [actingOn, setActingOn] = useState<string | null>(null);
+  const [actingOn, setActingOn] = useState<{ id: string; status: "approved" | "rejected" } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   async function review(id: string, status: "approved" | "rejected") {
-    setActingOn(id);
+    setActingOn({ id, status });
     setError(null);
 
-    const res = await fetch(`/api/signup-requests/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const json = await res.json();
+    try {
+      const res = await fetch(`/api/signup-requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const json = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      setError(json.error ?? "Something went wrong");
+      if (!res.ok) {
+        setError(json?.error ?? `Something went wrong (${res.status})`);
+        return;
+      }
+
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
       setActingOn(null);
-      return;
     }
-
-    setRequests((prev) => prev.filter((r) => r.id !== id));
-    setActingOn(null);
   }
 
   return (
@@ -68,20 +74,24 @@ export function SignupRequestsPanel({
                 <div className="flex shrink-0 gap-2">
                   <Button
                     size="sm"
-                    disabled={actingOn === req.id}
+                    disabled={actingOn?.id === req.id}
                     onClick={() => review(req.id, "approved")}
                     data-testid="signup-request-approve"
                   >
-                    Approve
+                    {actingOn?.id === req.id && actingOn.status === "approved"
+                      ? "Approving..."
+                      : "Approve"}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={actingOn === req.id}
+                    disabled={actingOn?.id === req.id}
                     onClick={() => review(req.id, "rejected")}
                     data-testid="signup-request-reject"
                   >
-                    Reject
+                    {actingOn?.id === req.id && actingOn.status === "rejected"
+                      ? "Rejecting..."
+                      : "Reject"}
                   </Button>
                 </div>
               </li>

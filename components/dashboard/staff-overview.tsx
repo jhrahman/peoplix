@@ -8,29 +8,25 @@ export async function StaffOverview({ isAdmin }: { isAdmin: boolean }) {
   const supabase = await createClient();
   const todayIso = ISO_DATE_FORMAT.format(new Date());
 
-  const [
-    { count: pendingCount },
-    { count: checkedInCount },
-    { count: employeeCount },
-    { count: pendingOvertimeCount },
-  ] = await Promise.all([
-    supabase
-      .from("leave_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending"),
-    supabase
-      .from("attendance")
-      .select("id", { count: "exact", head: true })
-      .eq("date", todayIso)
-      .not("check_in", "is", null),
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
-    isAdmin
-      ? supabase
-          .from("overtime_requests")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending")
-      : Promise.resolve({ count: 0 }),
-  ]);
+  const [{ count: pendingCount }, { count: checkedInCount }, { count: employeeCount }, { count: pendingOvertimeCount }] =
+    await Promise.all([
+      supabase
+        .from("leave_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+      supabase
+        .from("attendance")
+        .select("id", { count: "exact", head: true })
+        .eq("date", todayIso)
+        .not("check_in", "is", null),
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      isAdmin
+        ? supabase
+            .from("overtime_requests")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending")
+        : Promise.resolve({ count: 0 }),
+    ]);
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
