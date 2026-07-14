@@ -1,4 +1,4 @@
-# Test Cases — Settings & Danger Zone
+# Test Cases — Settings, Danger Zone & Delete Account
 
 App URL: https://peoplix-hr.vercel.app/settings
 
@@ -48,3 +48,26 @@ App URL: https://peoplix-hr.vercel.app/settings
 | 18 | After clearing, revisit the Dashboard, Leave, Holidays, Attendance, and Overtime pages | N/A | Each page shows correct empty states (no stale data, no errors) rather than leftover cached records |
 | 19 | After clearing, use "Generate default BD holidays" on the Holidays page to recover | N/A | Default holiday set is restored successfully |
 | 20 | Trigger "Clear Database" a second time immediately after a successful clear | Repeat steps 12–17 | Operation completes without error even with already-empty tables (idempotent) |
+
+## Delete Account — visibility & confirmation
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 21 | Log in as an Employee and scroll to the "Delete Account" section | Valid Employee account | "Delete Account" button is visible and enabled (unlike Clear Database, this is not Admin-only) |
+| 22 | Log in as HR or Admin and view the "Delete Account" section | Valid HR/Admin account | Button is equally visible and enabled for every role |
+| 23 | Click "Delete Account" | N/A | Confirmation dialog opens warning that the account and all associated data (leave requests, balances, attendance, overtime records) will be permanently deleted |
+| 24 | In the confirmation dialog, leave the confirmation input empty and try to confirm | Confirmation input: (blank) | "Delete Account" action button in the dialog remains disabled |
+| 25 | Type an incorrect confirmation phrase | Input: "delete my account" (wrong case) or "DELETE" (incomplete) | Action button remains disabled; phrase must match exactly |
+| 26 | Type the exact required phrase "DELETE MY ACCOUNT" | Input: `DELETE MY ACCOUNT` | Action button becomes enabled |
+| 27 | Click "Cancel" instead of confirming | N/A | Dialog closes; account is not deleted; confirmation input resets |
+
+## Delete Account — deleting the account
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 28 | Confirm deletion with the correct phrase | Use a disposable test account (not a protected/seed account) | Action button shows "Deleting Account..." while in flight; on success the browser is redirected to `/login` |
+| 29 | Attempt to log back in with the deleted account's credentials | Same email/password used in step 28 | Login fails — the account no longer exists |
+| 30 | As Admin, check the Employees list after another role's account self-deletes | N/A | The deleted account no longer appears in the Employees directory (profile row cascaded on delete) |
+| 31 | Confirm cascade cleanup after a self-delete | Account had leave requests, attendance, and/or overtime records before deleting | Those records no longer appear anywhere (e.g. staff "all" views) — deleted via `on delete cascade`, not left orphaned |
+| 32 | Attempt to trigger `DELETE /api/account` directly without a session (e.g. via dev tools/API client, logged out) | No session/cookie | Server rejects the request (`401`) |
+| 33 | Log in as a protected account (see `lib/protected-employees.ts`) and attempt self-deletion | Protected account's session | Server rejects the request (`403`), independent of the client-side dialog |

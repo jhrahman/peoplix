@@ -152,7 +152,7 @@ only **Admin** may approve/reject — HR can view all entries but not act on the
     /leave                    → apply + my requests (all) / approvals (HR/Admin)
     /attendance                → check-in/out + history
     /holidays                  → calendar view + admin edit
-    /settings                  → profile self-edit (name/phone/department/designation), change password, Danger Zone
+    /settings                  → profile self-edit (name/phone/department/designation), change password, Danger Zone, Delete Account
   /api
     /leave/route.ts, /leave/[id]/route.ts
     /attendance/route.ts
@@ -201,6 +201,13 @@ CLAUDE.md           → project conventions for AI-assisted development
   - **Self-service password change**: logged-in users can also change their password directly from
     **Settings** (`supabase.auth.updateUser({ password })`) without going through the email/recovery
     flow at all, since they already have an active session.
+  - **Self-service account deletion**: every role (Employee, HR, Admin) can permanently delete their
+    own account from **Settings** (`DELETE /api/account`) — a confirm-phrase dialog matching the
+    Danger Zone pattern, showing a "Deleting Account..." state while in flight. The route deletes the
+    Supabase Auth user via the Admin API, which cascades to `profiles` and all FK'd tables
+    (`leave_requests`, `leave_balances`, `attendance`, `overtime_requests`), then signs out and
+    redirects to `/login`. The same protected-employees allowlist (`lib/protected-employees.ts`) used
+    to stop Admin from deleting certain accounts also blocks those accounts from deleting themselves.
 
 ---
 

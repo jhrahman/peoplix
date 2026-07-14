@@ -34,6 +34,7 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 - **Import / Export** — CSV and XLSX for Employees, Leave requests, and Holidays, with a downloadable template, row-by-row validation preview, and per-row import status.
 - **Settings** — every role can self-edit their own Full name, Phone, Department, and Designation (Email is never editable), plus change their own password directly — no need to go through the forgot-password email flow just to update a password.
 - **Danger Zone** — Admin-only, type-to-confirm wipe of all leave/holiday/attendance/overtime data; employee accounts are never touched.
+- **Delete Account** — every role can permanently delete their own account from Settings, behind a type-to-confirm dialog with a live "Deleting Account..." state; deletes the Supabase Auth user (cascading to their profile and all of their leave/attendance/overtime records) and redirects to `/login`.
 - **Polish** — page-transition loading states, spinner feedback on in-flight approve/reject actions, a proper pointer cursor on every button, responsive/mobile layout, empty states everywhere, `data-testid` attributes on every interactive element for automated testing.
 - **Brand assets** — code-generated favicon, apple-touch icon, and Open Graph image (teal gradient mark, no external design tool).
 
@@ -64,10 +65,10 @@ app/
     overtime/                  Log, summary, Admin-only approvals
     holidays/                  Holiday calendar
     attendance/                Check-in/out, history, overrides
-    settings/                  Profile self-edit (name/phone/department/designation), change password, Danger Zone
+    settings/                  Profile self-edit (name/phone/department/designation), change password, Danger Zone, Delete Account
   api/                      REST endpoints, one resource per folder
-    employees/, leave/, holidays/, attendance/, overtime/, admin/clear-database/, signup-requests/
-    (directory/ and settings/ have no API route — see api-endpoints/API-ENDPOINTS.md §8-9)
+    employees/, leave/, holidays/, attendance/, overtime/, admin/clear-database/, signup-requests/, account/
+    (directory/ has no API route, and settings/ only backs Delete Account via account/ — see api-endpoints/API-ENDPOINTS.md §8-10)
 components/
   ui/            shadcn primitives (Button, Card, Dialog, Table, ...)
   layout/        Sidebar, Navbar, ThemeToggle, page loader
@@ -155,7 +156,7 @@ and both are structured so they can be turned directly into an automated suite (
   - [`04-leave.md`](test-cases/04-leave.md) — apply, balances, approvals, import/export
   - [`05-holidays.md`](test-cases/05-holidays.md) — CRUD, default BD holiday seeding, import/export
   - [`06-attendance.md`](test-cases/06-attendance.md) — check-in/out, manual overrides, team view, Bangladesh time format
-  - [`07-settings-danger-zone.md`](test-cases/07-settings-danger-zone.md) — profile edit, Danger Zone RBAC + confirmation flow
+  - [`07-settings-danger-zone.md`](test-cases/07-settings-danger-zone.md) — profile edit, Danger Zone RBAC + confirmation flow, Delete Account confirmation + cascade cleanup
   - [`08-overtime.md`](test-cases/08-overtime.md) — logging, validation, Admin-only approvals, dashboard widgets
   - [`09-directory.md`](test-cases/09-directory.md) — all-roles visibility, read-only listing, search
   - [`10-signup-requests.md`](test-cases/10-signup-requests.md) — public request form, duplicate handling, Admin-only approve/reject, resulting invite email

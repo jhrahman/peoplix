@@ -406,7 +406,7 @@ them is **Admin only** — not HR, unlike every other Admin/HR-gated resource in
 
 ## 8. Settings (profile self-edit + password) — no dedicated API route
 
-`/settings` doesn't go through `/api/*` at all:
+`/settings` doesn't go through `/api/*` at all for these two actions:
 - **Profile edit** (full name, phone, department, designation — email is never editable) is a Next.js
   **Server Action** (`updateOwnProfile` in `lib/actions/profile.ts`), called directly from the form,
   not a REST endpoint. RLS (`profiles_update_own_or_staff`) already restricts this to the caller's own
@@ -417,7 +417,9 @@ them is **Admin only** — not HR, unlike every other Admin/HR-gated resource in
 
 If you need to exercise either via an API client rather than the UI, you'll need a valid Supabase
 session and must call these through the Supabase client SDK/REST directly — there is nothing under
-`/api/` to call for this feature.
+`/api/` to call for these two actions.
+
+The **Delete Account** action on the same page does go through a dedicated route — see §10 below.
 
 ---
 
@@ -429,6 +431,25 @@ every authenticated user can `SELECT` all profiles (write access is unchanged �
 Admin/HR-only or self-only). If you need to exercise this via an API client rather than the
 UI, query Supabase's PostgREST endpoint directly (`GET {SUPABASE_URL}/rest/v1/profiles`) with
 the logged-in user's access token — there is nothing under `/api/` to call for this feature.
+
+---
+
+## 10. Account — `/api/account`
+
+### DELETE `/api/account`
+- **Auth**: Session required (self only — deletes the caller's own account, every role)
+- **Body**: none
+- **Behavior**: Deletes the caller's own Supabase Auth user via the Admin API, which cascades to their
+  `profiles` row, `leave_requests`, `leave_balances`, `attendance`, and `overtime_requests` (all FK'd
+  with `on delete cascade`). The route then signs out the session so cookies are cleared before the
+  client redirects to `/login`. A small set of protected accounts (see `lib/protected-employees.ts`,
+  the same allowlist used by `DELETE /api/employees/{id}`) can never delete themselves via this route
+  either — checked server-side.
+- **Success (200)**: `{ "data": { "id": "<deleted-uuid>" } }`
+- **Errors**:
+  - `401` — not logged in
+  - `403` — caller's account is in the protected-employees allowlist
+  - `400` — deletion failed
 
 ---
 
@@ -464,3 +485,4 @@ the logged-in user's access token — there is nothing under `/api/` to call for
 | PATCH | `/api/signup-requests/{id}` | Admin only | Approve (creates account + sends invite email) or reject a request |
 | — | `/settings` (no API route) | Session | Server Action + direct Supabase Auth calls — see §8 |
 | — | `/directory` (no API route) | Session | Reads `profiles` directly via Supabase — see §9 |
+| DELETE | `/api/account` | Session | Delete your own account (all roles) — see §10 |

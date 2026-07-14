@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { DangerZone } from "@/components/settings/danger-zone";
+import { DeleteAccount } from "@/components/settings/delete-account";
 
 export default async function SettingsPage() {
   const { profile } = await getCurrentProfile();
@@ -32,6 +33,8 @@ export default async function SettingsPage() {
       <div className="mx-auto max-w-lg">
         <DangerZone isAdmin={profile.role === "admin"} />
       </div>
+
+      <DeleteAccount />
     </div>
   );
 }
