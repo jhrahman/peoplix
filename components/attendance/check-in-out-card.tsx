@@ -1,63 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, LogIn, LogOut } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDuration, formatTime } from "@/lib/attendance";
 import type { Attendance } from "@/lib/types";
 
-type PendingAction = "check-in" | "check-out" | null;
-
 export function CheckInOutCard({ today }: { today: Attendance | null }) {
   const router = useRouter();
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const [justCompleted, setJustCompleted] = useState<PendingAction>(null);
-
-  // Wait for `today` itself to reflect the check-in/out (i.e. router.refresh()
-  // has actually re-pulled the row from the DB) before flipping to the success
-  // state — flipping on a fixed timeout races the refresh and flashes the
-  // stale label back for a moment.
-  useEffect(() => {
-    if (pendingAction === "check-in" && today?.check_in) {
-      setPendingAction(null);
-      setJustCompleted("check-in");
-      const timer = setTimeout(() => setJustCompleted(null), 1200);
-      return () => clearTimeout(timer);
-    }
-    if (pendingAction === "check-out" && today?.check_out) {
-      setPendingAction(null);
-      setJustCompleted("check-out");
-      const timer = setTimeout(() => setJustCompleted(null), 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [today, pendingAction]);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
 
   async function handleCheckIn() {
-    setPendingAction("check-in");
+    setCheckingIn(true);
     const res = await fetch("/api/attendance", { method: "POST" });
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       toast.error(json.error ?? "Failed to check in");
-      setPendingAction(null);
+      setCheckingIn(false);
       return;
     }
 
+    // Leave checkingIn===true on success: this whole branch unmounts once
+    // router.refresh() delivers `today.check_in`, so there's no stale render
+    // in between to flash "Check In" back before the row disappears.
     router.refresh();
   }
 
   async function handleCheckOut() {
     if (!today) return;
-    setPendingAction("check-out");
+    setCheckingOut(true);
     const res = await fetch(`/api/attendance/${today.id}`, { method: "PATCH" });
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       toast.error(json.error ?? "Failed to check out");
-      setPendingAction(null);
+      setCheckingOut(false);
       return;
     }
 
@@ -79,19 +61,11 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
             <Button
               size="lg"
               onClick={handleCheckIn}
-              disabled={pendingAction === "check-in" || justCompleted === "check-in"}
+              disabled={checkingIn}
               data-testid="attendance-check-in"
             >
-              {justCompleted === "check-in" ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <LogIn className="h-4 w-4" />
-              )}
-              {justCompleted === "check-in"
-                ? "Checked in"
-                : pendingAction === "check-in"
-                  ? "Checking in..."
-                  : "Check In"}
+              <LogIn className="h-4 w-4" />
+              {checkingIn ? "Checking in..." : "Check In"}
             </Button>
           </>
         ) : !today.check_out ? (
@@ -103,19 +77,11 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
               size="lg"
               variant="destructive"
               onClick={handleCheckOut}
-              disabled={pendingAction === "check-out" || justCompleted === "check-out"}
+              disabled={checkingOut}
               data-testid="attendance-check-out"
             >
-              {justCompleted === "check-out" ? (
-                <Check className="h-4 w-4" />
-              ) : (
-                <LogOut className="h-4 w-4" />
-              )}
-              {justCompleted === "check-out"
-                ? "Checked out"
-                : pendingAction === "check-out"
-                  ? "Checking out..."
-                  : "Check Out"}
+              <LogOut className="h-4 w-4" />
+              {checkingOut ? "Checking out..." : "Check Out"}
             </Button>
           </>
         ) : (
