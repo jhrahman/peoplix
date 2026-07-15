@@ -81,6 +81,10 @@ export function ResetPasswordForm() {
       return;
     }
 
+    // Awaited (not fire-and-forget) so it actually completes before the
+    // navigation below unmounts this component/cancels the request.
+    await fetch("/api/auth/password-set", { method: "POST" }).catch(() => {});
+
     router.replace("/");
     router.refresh();
   }

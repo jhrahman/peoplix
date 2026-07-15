@@ -84,6 +84,7 @@ Dashboard gets an Admin-only orange-gradient stat tile for the pending count.
 | joined_date | date | |
 | avatar_url | text | nullable |
 | manager_id | uuid | nullable, self-FK (reserved for future use) |
+| password_set_at | timestamptz | nullable — null until the employee's first successful password set; drives the Audit Log's "joined" action (§10) |
 
 ### `leave_requests`
 | Column | Type | Notes |
@@ -209,6 +210,9 @@ CLAUDE.md           → project conventions for AI-assisted development
   - **Self-service password change**: logged-in users can also change their password directly from
     **Settings** (`supabase.auth.updateUser({ password })`) without going through the email/recovery
     flow at all, since they already have an active session.
+  - **Audit logging**: both this and the `/reset-password` flow above end up in the Audit Log
+    (§10) — a first-ever password set logs as "Joined", everything after that (Settings, or a later
+    forgot-password link) logs as an ordinary password update.
   - **Self-service account deletion**: every role (Employee, HR, Admin) can permanently delete their
     own account from **Settings** (`DELETE /api/account`) — a confirm-phrase dialog matching the
     Danger Zone pattern, showing a "Deleting Account..." state while in flight. The route deletes the
@@ -299,11 +303,23 @@ A `/audit-log` page, positioned right before Settings in the nav, visible to eve
 
 - **What's logged:** leave apply/self-edit/cancel/approve/reject, overtime log/self-edit/cancel/
   approve/reject, attendance check-in/checkout/override/delete, employee create/update/delete,
-  signup-request approve/reject, profile self-edit, password change, and self-account deletion.
-  Each entry records the actor's name/email (snapshotted at write time, so it still reads correctly
-  even after the profile is later edited or the account deleted), a timestamp, an `action`
-  (`create`/`update`/`delete`/`cancel`/`approve`/`reject`), an `entity`, and a short plain-language
-  comment (e.g. "Applied for casual leave (Jul 20 → Jul 22)", "Approved Jane Doe's overtime (3h)").
+  signup-request approve/reject, profile self-edit, password change, self-account deletion, and a
+  new employee **joining** (see below). Each entry records the actor's name/email (snapshotted at
+  write time, so it still reads correctly even after the profile is later edited or the account
+  deleted), a timestamp, an `action`
+  (`create`/`update`/`delete`/`cancel`/`approve`/`reject`/`joined`), an `entity`, and a short
+  plain-language comment (e.g. "Applied for casual leave (Jul 20 → Jul 22)", "Approved Jane Doe's
+  overtime (3h)").
+- **"Joined" action:** the invite/forgot-password flow (`/reset-password`, §5) is one single
+  mechanism serving two different situations — a brand-new employee setting their password for the
+  first time, and an existing employee who forgot theirs — and they need different audit entries.
+  Distinguished via a new nullable `profiles.password_set_at` column: `null` means this account has
+  never set its own password before, so the first successful `updateUser()` call logs
+  `action: "joined"` with comment `"<email> has been registered to the app"` and stamps
+  `password_set_at`; every subsequent password set (from Settings, or a later forgot-password link)
+  logs as an ordinary `action: "update"`, `entity: "password"` instead. Existing accounts were
+  backfilled with a non-null `password_set_at` at migration time so they don't retroactively log a
+  fake "joined" entry the next time they reset a forgotten password.
 - **Visibility:** RLS (`audit_logs_select_own_or_admin`) restricts Employee/HR to their own entries
   (`actor_id = auth.uid()`); only Admin sees every employee's. This mirrors the Danger Zone's "Admin
   isn't a monolith" theme, but the gate here is the ordinary `role = 'admin'` check, not the narrower

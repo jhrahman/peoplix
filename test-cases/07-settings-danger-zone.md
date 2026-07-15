@@ -25,6 +25,7 @@ App URL: https://peoplix-hr.vercel.app/settings
 | 7d | Submit mismatched New password / Confirm password values | New password: "TestPass123", Confirm: "TestPass124" | Inline error: "Passwords don't match."; no request is sent |
 | 7e | Submit matching, valid-length passwords | New password/Confirm: "TestPass123" (8+ chars, matching) | Button shows "Updating..." while in flight, then a success toast ("Password updated."); both fields clear |
 | 7f | Log out and log back in using the new password | Email + newly set password | Login succeeds with the new password |
+| 7g | Check the Audit Log after changing your password from Settings | See [`11-audit-log.md`](11-audit-log.md) | A password-update entry appears, attributed to your own account |
 
 ## Danger Zone — visibility & access control
 

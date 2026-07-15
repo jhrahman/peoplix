@@ -37,6 +37,7 @@ acting on it is restricted to Admin (not HR, unlike most Admin/HR-gated resource
 | 15 | Wait for the approval to complete | N/A | Request disappears from the pending list; a new employee account is created with the submitted name/department/designation/mobile and role "employee"; a leave balance row is seeded for the current year |
 | 16 | Check the applicant's inbox after approval | Test applicant's email | Receives the Peoplix-branded "Set your password" email (teal gradient header/button) linking to `/reset-password` |
 | 17 | Complete the password-setup link and log in | New credentials | Login succeeds; profile reflects the department/designation/mobile submitted in the original request |
+| 17a | As Admin, check the Audit Log after this new employee completes the password-setup link | See [`11-audit-log.md`](11-audit-log.md) | A "Joined" entry appears for them, not an ordinary password-update entry |
 | 18 | Attempt to approve the same request twice in quick succession (e.g. double-click) | Rapid double-click on "Approve" | Second click is a no-op — button is disabled the instant the first click registers |
 | 19 | Approve a request whose email already has an existing auth account (e.g. a prior attempt partially completed) | Request with a pre-existing auth user for that email | Approval succeeds by reusing the existing account instead of failing with a duplicate-email error |
 

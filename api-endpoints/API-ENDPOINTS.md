@@ -18,7 +18,7 @@ Do not put real passwords, service-role keys, or production secrets in this file
 - `LeaveStatus` = `"pending" | "approved" | "rejected"`
 - `OvertimeStatus` = `"pending" | "approved" | "rejected"`
 - `SignupRequestStatus` = `"pending" | "approved" | "rejected"`
-- `AuditAction` = `"create" | "update" | "delete" | "cancel" | "approve" | "reject"`
+- `AuditAction` = `"create" | "update" | "delete" | "cancel" | "approve" | "reject" | "joined"`
 - `AuditEntity` = `"leave_request" | "overtime_request" | "attendance" | "employee" | "signup_request" | "profile" | "password" | "account"`
 
 ---
@@ -523,6 +523,23 @@ window and returns `{ "data": { "deleted": <count> } }`.
   - `404` — `{ "error": "No user found with this email. Please Sign Up first" }`
   - `500` — lookup or send failed
 
+### POST `/api/auth/password-set`
+- **Auth**: Session required (established client-side via `supabase.auth.setSession()` from the
+  recovery-link tokens, before this route is ever called — see `/reset-password`)
+- **Body**: none
+- **Behavior**: Called from `/reset-password` right after `supabase.auth.updateUser({ password })`
+  succeeds. The same page/mechanism serves two different situations, and this route is what tells
+  them apart, based on whether `profiles.password_set_at` is still `null`:
+  - **`null`** (this account has never set its own password before — i.e. it was just created by
+    Admin/HR or an approved signup request, and this is the invite link): logs `action: "joined"`,
+    `entity: "account"`, comment `"<email> has been registered to the app"`, then stamps
+    `password_set_at` so this never fires again for the same account.
+  - **otherwise** (an existing employee following a genuine "Forgot password?" link): logs
+    `action: "update"`, `entity: "password"`, comment `"Reset password via forgot-password link"`.
+- **Success (200)**: `{ "data": { "ok": true } }`
+- **Errors**: `401` — no session (shouldn't happen in normal use, since `/reset-password` only calls
+  this after establishing one)
+
 ---
 
 ## Quick reference table
@@ -562,4 +579,5 @@ window and returns `{ "data": { "deleted": <count> } }`.
 | DELETE | `/api/account` | Session | Delete your own account (all roles) — see §10 |
 | — | `/audit-log` (no API route) | Session | Reads `audit_logs` directly via Supabase, RLS-scoped — see §11 |
 | POST | `/api/auth/forgot-password` | None (public) | Check an email against real accounts and send a reset link — see §12 |
+| POST | `/api/auth/password-set` | Session (recovery link) | Log "joined" (first-ever password) or a password reset from `/reset-password` — see §12 |
 | GET | `/api/cron/audit-log-cleanup` | `CRON_SECRET` bearer token (Vercel Cron only) | Daily hard-delete of audit logs older than 10 days — see §11 |

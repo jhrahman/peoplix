@@ -15,6 +15,10 @@ export type Profile = {
   joined_date: string;
   avatar_url: string | null;
   manager_id: string | null;
+  // Null until the employee sets their password for the first time (completing
+  // the invite/access-approval flow) - that transition is what gets logged as
+  // the "joined" audit action, rather than looking like an ordinary password reset.
+  password_set_at: string | null;
 };
 
 export type LeaveRequest = {
@@ -106,7 +110,7 @@ export type OvertimeRequestSummary = Pick<
   "id" | "date" | "hours" | "reason" | "status"
 >;
 
-export type AuditAction = "create" | "update" | "delete" | "cancel" | "approve" | "reject";
+export type AuditAction = "create" | "update" | "delete" | "cancel" | "approve" | "reject" | "joined";
 
 export type AuditEntity =
   | "leave_request"

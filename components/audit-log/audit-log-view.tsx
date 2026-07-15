@@ -25,6 +25,7 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   cancel: "Cancelled",
   approve: "Approved",
   reject: "Rejected",
+  joined: "Joined",
 };
 
 const ACTION_VARIANT: Record<AuditAction, "default" | "secondary" | "destructive"> = {
@@ -34,6 +35,7 @@ const ACTION_VARIANT: Record<AuditAction, "default" | "secondary" | "destructive
   cancel: "destructive",
   approve: "default",
   reject: "destructive",
+  joined: "default",
 };
 
 export function AuditLogView({ logs, isAdmin }: { logs: AuditLog[]; isAdmin: boolean }) {

@@ -28,6 +28,7 @@ Access: Admin and HR only.
 | 9 | Submit the form with Role set to "Admin" | Full name: "Test Admin One", Email: unique test address, Role: Admin | New row appears with role "Admin" |
 | 10 | While the create request is in flight, observe the submit button | N/A | Button reads "Saving..." and is disabled to prevent double submission |
 | 11 | Log in as the newly created employee (after completing the invite/reset-password flow) | New employee's email | Login succeeds and the dashboard reflects the assigned role |
+| 11a | As Admin, check the Audit Log after that employee completed the invite flow | See [`11-audit-log.md`](11-audit-log.md) | A "Joined" entry appears for the new employee, comment reading "&lt;their email&gt; has been registered to the app" |
 
 ## Edit employee
 

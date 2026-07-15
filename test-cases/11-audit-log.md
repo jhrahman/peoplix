@@ -72,6 +72,11 @@ right action label, and a comment that plainly describes what happened.
 | 36 | Self-edit own profile in Settings | Actor = self; action "Updated"; comment says profile was updated |
 | 37 | Change own password in Settings | Actor = self; action "Updated"; comment says password was changed |
 | 38 | Delete own account | Actor = self; entry is visible (check as Admin, since the account/actor no longer exists to view it as) — the actor's name/email still display correctly even after the account is gone |
+| 38a | A newly invited/approved employee opens the invite link and sets their password for the very first time | New account, first visit to `/reset-password` | Actor = the new employee; action **"Joined"**; comment reads exactly `"<their email> has been registered to the app"` |
+| 38b | That same employee later uses "Forgot password?" and resets their password again | Same account, second time through `/reset-password` | Actor = the employee; action **"Updated"** (not "Joined" again) — only the very first password set logs as "Joined" |
+| 38c | An existing employee (who has logged in normally before) uses "Forgot password?" from the login page | Existing account, `/reset-password` via the forgot-password link | Actor = the employee; action "Updated" — never "Joined", since this account already has a password set |
+| 38d | As Admin, filter/search the Audit Log for a "Joined" entry | Search box: the new employee's name or email | Entry appears with action "Joined" and the exact comment text from case 38a |
+| 38e | As the newly joined employee, open their own Audit Log | Their own account | Their "Joined" entry is visible to them, same as any of their other entries |
 
 ## Resilience
 
