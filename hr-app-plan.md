@@ -62,6 +62,10 @@ Dashboard gets an Admin-only orange-gradient stat tile for the pending count.
 8. **Team directory** *(ad-hoc, post-v1)* — read-only, searchable profile listing visible to
    every role (name, designation, department, email/phone); no editing. Requires one additional
    `profiles` SELECT policy so non-staff can read everyone's row (write access unaffected).
+9. **Audit Log** *(ad-hoc, post-v1)* — who-did-what history for leave/overtime/attendance/employee/
+   signup-request/profile/password/account actions. Every role sees their own entries; Admin only
+   sees everyone's. 10-day retention (auto-deleted by a daily cron), to stay within Supabase's
+   free-tier storage cap. See §10.
 
 ---
 
@@ -142,6 +146,10 @@ only **Admin** may approve/reject — HR can view all entries but not act on the
 ---
 
 ## 4. Folder Structure
+
+> This diagram reflects the original v1 scaffold. Several modules shipped after it was written
+> (Overtime, Team Directory, Sign-up Requests, Account deletion, Audit Log) aren't reflected below —
+> see [README.md § Project structure](README.md#-project-structure) for the current, up-to-date tree.
 
 ```
 /app
@@ -236,7 +244,11 @@ CLAUDE.md           → project conventions for AI-assisted development
 Every route under `/app/api/*/route.ts` exposes standard REST verbs (GET / POST / PATCH / DELETE), so the API is usable outside the UI as well. Supabase also auto-generates REST endpoints over the Postgres tables if direct access is ever needed.
 
 Additional routes:
-- `POST /api/admin/clear-database` — Admin-only, wipes tables (see §9)
+- `POST /api/admin/clear-database` — System Admin only, wipes tables (see §9)
+- `POST /api/admin/clear-audit-logs` — Admin only, wipes audit log history (see §9, §10)
+- `POST /api/auth/forgot-password` — public, checks an email against real accounts before sending a reset link
+- `POST /api/settings/password-changed` — audit-log-only hook after a client-side password change (see §10)
+- `GET /api/cron/audit-log-cleanup` — internal, Vercel Cron only (`CRON_SECRET`), daily retention cleanup (see §10)
 - `GET /api/{employees|leave|holidays}/export` — returns CSV or XLSX based on a `?format=` query param
 - `POST /api/{employees|leave|holidays}/import` — accepts uploaded CSV/XLSX, validates, and upserts rows
 
@@ -252,24 +264,68 @@ Additional routes:
 6. Holiday calendar — seed defaults + admin edit
 7. Attendance — check-in/out
 8. Import/export (CSV & XLSX) across Employees, Leave, Holidays
-9. Danger Zone — Clear Database (Admin only)
+9. Danger Zone — Clear Database (System Admin only)
 10. Polish — responsive pass, glass-effect pass, empty/loading states
 11. Push to GitHub → GitHub Actions CI → Vercel deploy
+12. Audit Log — who-did-what history, 10-day retention (see §10)
 
 ---
 
-## 9. Danger Zone — Clear Database (Admin only)
+## 9. Danger Zone — Clear Database (System Admin only)
 A **Settings → Danger Zone** section with a "Clear Database" button.
 
-- **Visibility:** rendered only for `role = admin`. For HR/Employee accounts the button is either hidden or rendered **disabled** (disabled + tooltip "Admin only" is preferred over hiding, so the UI stays consistent across roles).
-- **Server-side enforcement:** the corresponding `POST /api/admin/clear-database` route independently re-checks `role === 'admin'` from the session before doing anything — the disabled button is a UX nicety, not the actual security boundary.
-- **Confirmation flow:** clicking opens a confirm dialog requiring the admin to type a confirmation phrase (e.g. `DELETE ALL DATA`) before the action fires, to prevent accidental clicks.
-- **Scope:** truncates `leave_requests`, `leave_balances`, `holidays`, `attendance`, and optionally `profiles` (excluding the currently logged-in admin, or excluded entirely — worth deciding at build time). Auth users in `auth.users` are left untouched unless explicitly included.
+- **Visibility:** built as an Admin-only feature, but tightened further in the actual implementation
+  to a single, hardcoded **System Admin** account (`isSystemAdmin()` in `lib/protected-employees.ts`,
+  keyed off one specific email) — not every `role = admin` account. For every other role *and* every
+  other Admin account, the section isn't rendered in the DOM at all (fully hidden, not disabled +
+  tooltip — the original plan's "disabled is preferred over hiding" call was revisited once the gate
+  narrowed past just role, since a visible-but-permanently-disabled control for other Admins would
+  have implied they could get access, which isn't true).
+- **Server-side enforcement:** the corresponding `POST /api/admin/clear-database` route independently
+  re-checks `role === 'admin'` from the session, **then** additionally re-checks `isSystemAdmin()` —
+  the hidden UI is a UX nicety, not the actual security boundary.
+- **Confirmation flow:** clicking opens a confirm dialog requiring the admin to type a confirmation phrase (`DELETE ALL DATA`) before the action fires, to prevent accidental clicks.
+- **Scope:** truncates `leave_requests`, `leave_balances`, `holidays`, `attendance`, and `overtime_requests`. `profiles` and Supabase Auth users are never touched — no accounts are affected.
 - **Purpose:** since this is a personal/demo project on Supabase's free 500MB tier, this gives an easy way to reset all seeded/test data without needing to touch the Supabase dashboard directly.
+- **Separately**, any Admin (not just the System Admin) can clear all **Audit Log** history from the
+  same Settings page — a lighter-weight action since it's only clearing history, not operational
+  data, so it doesn't need the same narrow gate or the confirm-phrase step (a plain Yes/Cancel dialog
+  is enough). See §10.
 
 ---
 
-## 10. Import / Export (CSV & XLSX)
+## 10. Audit Log
+A `/audit-log` page, positioned right before Settings in the nav, visible to every role.
+
+- **What's logged:** leave apply/self-edit/cancel/approve/reject, overtime log/self-edit/cancel/
+  approve/reject, attendance check-in/checkout/override/delete, employee create/update/delete,
+  signup-request approve/reject, profile self-edit, password change, and self-account deletion.
+  Each entry records the actor's name/email (snapshotted at write time, so it still reads correctly
+  even after the profile is later edited or the account deleted), a timestamp, an `action`
+  (`create`/`update`/`delete`/`cancel`/`approve`/`reject`), an `entity`, and a short plain-language
+  comment (e.g. "Applied for casual leave (Jul 20 → Jul 22)", "Approved Jane Doe's overtime (3h)").
+- **Visibility:** RLS (`audit_logs_select_own_or_admin`) restricts Employee/HR to their own entries
+  (`actor_id = auth.uid()`); only Admin sees every employee's. This mirrors the Danger Zone's "Admin
+  isn't a monolith" theme, but the gate here is the ordinary `role = 'admin'` check, not the narrower
+  System Admin one — clearing history isn't as sensitive as wiping operational data.
+- **Filtering:** an Admin-only real-time search box (name/email/comment) plus a from/to date-range
+  filter available to every role, both entirely client-side over the already-fetched rows (the 10-day
+  retention window keeps that dataset small enough that a server round-trip per keystroke isn't
+  needed). The date inputs are mutually clamped (`min`/`max`) so an invalid range can't be picked.
+- **Retention:** kept for **10 days**, shown as a banner on the page itself so every role understands
+  why older history disappears. Enforced two ways: every read query is clamped to the last 10 days
+  regardless of role, and a daily Vercel Cron job (`vercel.json` → `/api/cron/audit-log-cleanup`,
+  gated by a `CRON_SECRET` bearer token Vercel sends automatically) hard-deletes anything older —
+  same free-tier-storage motivation as Danger Zone.
+- **Writes:** always via the service-role client (`lib/audit.ts`'s `logAudit()`), regardless of which
+  client performed the underlying mutation — `audit_logs` has no insert policy for user sessions at
+  all. A logging failure never breaks the action it's describing (fire-and-forget with a console
+  error, not a thrown exception).
+- **Cleanup:** any Admin (not just System Admin) can wipe all audit log history from Settings — see §9.
+
+---
+
+## 11. Import / Export (CSV & XLSX)
 Applies to the main data-driven features: **Employees**, **Leave requests**, **Leave balances**, and **Holidays**.
 
 - **Export:** each of these list views gets an "Export" button offering both **CSV** and **XLSX** output of the currently filtered/visible data (e.g. export just "pending leave requests" or a date-ranged holiday list).
@@ -287,7 +343,7 @@ Applies to the main data-driven features: **Employees**, **Leave requests**, **L
 
 ---
 
-## 11. Local Development & Containerization (Docker)
+## 12. Local Development & Containerization (Docker)
 Vercel builds and deploys directly from the Git repo (`next build`) — it does **not** deploy from a Docker image. Docker is used here purely for **local development consistency**, not production deployment.
 
 - **`Dockerfile`** — multi-stage Node build for running the Next.js app locally in a container, so dependencies/behavior are identical regardless of host machine/OS
@@ -297,7 +353,7 @@ Vercel builds and deploys directly from the Git repo (`next build`) — it does 
 
 ---
 
-## 12. AI-Assisted Development Conventions (`CLAUDE.md` + Skills)
+## 13. AI-Assisted Development Conventions (`CLAUDE.md` + Skills)
 Since parts of this build will likely use Claude Code, a couple of lightweight conventions keep AI-assisted work consistent across sessions:
 
 - **`CLAUDE.md`** at the repo root — persistent project context loaded automatically by Claude Code, covering:
@@ -313,7 +369,7 @@ Both are low-cost additions that pay off most on a project like this, where seve
 
 ---
 
-## 13. Hosting & Cost Notes
+## 14. Hosting & Cost Notes
 - **Vercel Hobby plan:** free, deploys directly from GitHub via Actions
 - **Supabase Free plan:** free forever, no credit card, includes Postgres + Auth + REST API
   - Limits: 500MB database, 50,000 MAU, 1GB file storage — generous for this use case
@@ -321,7 +377,7 @@ Both are low-cost additions that pay off most on a project like this, where seve
 
 ---
 
-## 14. Explicitly Out of Scope (v1)
+## 15. Explicitly Out of Scope (v1)
 - Automated testing (planned in a separate repo later)
 - Public self-registration
 - Full org-chart hierarchy / manager tree UI

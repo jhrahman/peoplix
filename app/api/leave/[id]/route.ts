@@ -3,7 +3,8 @@ import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance, leaveDays, LEAVE_TYPE_BALANCE_COLUMNS } from "@/lib/leave";
-import type { LeaveRequest } from "@/lib/types";
+import { logAudit } from "@/lib/audit";
+import type { LeaveRequest, Profile } from "@/lib/types";
 
 export async function PATCH(
   request: Request,
@@ -33,9 +34,9 @@ export async function PATCH(
 
   const { data: existing, error: fetchError } = await auth.supabase
     .from("leave_requests")
-    .select("*")
+    .select("*, employee:profiles!leave_requests_employee_id_fkey(full_name)")
     .eq("id", id)
-    .single<LeaveRequest>();
+    .single<LeaveRequest & { employee: { full_name: string } | null }>();
 
   if (fetchError || !existing) {
     return NextResponse.json({ error: "Leave request not found" }, { status: 404 });
@@ -71,6 +72,15 @@ export async function PATCH(
       .update({ [used]: (balance[used] as number) + days })
       .eq("id", balance.id);
   }
+
+  await logAudit({
+    actorId: auth.profile.id,
+    actorName: auth.profile.full_name,
+    actorEmail: auth.profile.email,
+    action: status === "approved" ? "approve" : "reject",
+    entity: "leave_request",
+    comment: `${status === "approved" ? "Approved" : "Rejected"} ${existing.employee?.full_name ?? "an employee"}'s ${existing.leave_type} leave (${existing.start_date} → ${existing.end_date})`,
+  });
 
   return NextResponse.json({ data: updated });
 }
@@ -143,6 +153,23 @@ async function handleSelfEdit(id: string, body: Record<string, unknown>) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  if (profile) {
+    await logAudit({
+      actorId: profile.id,
+      actorName: profile.full_name,
+      actorEmail: profile.email,
+      action: "update",
+      entity: "leave_request",
+      comment: `Updated pending ${leave_type} leave request (${start_date} → ${end_date})`,
+    });
+  }
+
   return NextResponse.json({ data });
 }
 
@@ -161,6 +188,12 @@ export async function DELETE(
 
   const { id } = await params;
 
+  const { data: existing } = await supabase
+    .from("leave_requests")
+    .select("*")
+    .eq("id", id)
+    .single<LeaveRequest>();
+
   // RLS already restricts this to the employee's own pending requests or staff.
   const { error, count } = await supabase
     .from("leave_requests")
@@ -176,6 +209,23 @@ export async function DELETE(
       { error: "Request not found, not yours, or no longer pending" },
       { status: 404 },
     );
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  if (profile && existing) {
+    await logAudit({
+      actorId: profile.id,
+      actorName: profile.full_name,
+      actorEmail: profile.email,
+      action: "cancel",
+      entity: "leave_request",
+      comment: `Cancelled pending ${existing.leave_type} leave request (${existing.start_date} → ${existing.end_date})`,
+    });
   }
 
   return NextResponse.json({ data: { id } });

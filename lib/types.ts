@@ -105,3 +105,26 @@ export type OvertimeRequestSummary = Pick<
   OvertimeRequest,
   "id" | "date" | "hours" | "reason" | "status"
 >;
+
+export type AuditAction = "create" | "update" | "delete" | "cancel" | "approve" | "reject";
+
+export type AuditEntity =
+  | "leave_request"
+  | "overtime_request"
+  | "attendance"
+  | "employee"
+  | "signup_request"
+  | "profile"
+  | "password"
+  | "account";
+
+export type AuditLog = {
+  id: string;
+  actor_id: string | null;
+  actor_name: string;
+  actor_email: string;
+  action: AuditAction;
+  entity: AuditEntity;
+  comment: string;
+  created_at: string;
+};

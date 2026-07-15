@@ -38,6 +38,15 @@ App URL: https://peoplix-hr.vercel.app/leave
 | 20 | Attempt to edit a request after it has been Approved or Rejected via direct API call | `PATCH /api/leave/{id}` with an edit-shaped body, on an already-reviewed request | Server rejects with "Only pending requests can be edited" |
 | 21 | Open the edit dialog, then click outside/close without saving | N/A | No changes are applied; row remains as it was before opening |
 
+## Cancel a pending request
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 21a | Click "Cancel" on a Pending request | Select a pending request | Button shows "Cancelling..." and stays disabled until the row is confirmed removed from the table — it never flashes back to "Cancel" for a moment before the row disappears |
+| 21b | Check for a "Cancel" action on an Approved or Rejected request | Request with status Approved or Rejected | No "Cancel" action is available for non-pending requests |
+| 21c | Attempt to cancel another employee's pending request via direct API call | `DELETE /api/leave/{id}` on a different employee's pending request, as a plain Employee | Server rejects (`404` — "not yours, or no longer pending"), independent of the UI |
+| 21d | As HR/Admin, cancel an employee's pending request from the Approvals view (if supported) | Select a pending request belonging to another employee | Request is removed; the owning employee's "My leave requests" table no longer shows it |
+
 ## Approvals (HR/Admin only)
 
 | # | Action | Test Data | Expected Result |

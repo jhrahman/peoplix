@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Clock,
   Contact,
+  History,
   LayoutDashboard,
   PartyPopper,
   Settings,
@@ -25,5 +26,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/overtime", label: "Overtime", icon: Timer, roles: ["admin", "hr", "employee"] },
   { href: "/holidays", label: "Holidays", icon: PartyPopper, roles: ["admin", "hr", "employee"] },
   { href: "/attendance", label: "Attendance", icon: Clock, roles: ["admin", "hr", "employee"] },
+  { href: "/audit-log", label: "Audit Log", icon: History, roles: ["admin", "hr", "employee"] },
   { href: "/settings", label: "Settings", icon: Settings, roles: ["admin", "hr", "employee"] },
 ];

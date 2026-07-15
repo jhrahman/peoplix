@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { DangerZone } from "@/components/settings/danger-zone";
+import { DeleteAuditLogs } from "@/components/settings/delete-audit-logs";
 import { DeleteAccount } from "@/components/settings/delete-account";
 import { isSystemAdmin } from "@/lib/protected-employees";
 
@@ -30,6 +31,12 @@ export default async function SettingsPage() {
           <ChangePasswordForm />
         </CardContent>
       </Card>
+
+      {profile.role === "admin" && (
+        <div className="mx-auto max-w-lg">
+          <DeleteAuditLogs />
+        </div>
+      )}
 
       {isSystemAdmin(profile.email) && (
         <div className="mx-auto max-w-lg">

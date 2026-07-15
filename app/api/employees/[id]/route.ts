@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isProtectedEmployee } from "@/lib/protected-employees";
+import { logAudit } from "@/lib/audit";
 
 export async function GET(
   _request: Request,
@@ -48,6 +49,16 @@ export async function PATCH(
   }
 
   revalidateTag("directory-profiles", { expire: 0 });
+
+  await logAudit({
+    actorId: auth.profile.id,
+    actorName: auth.profile.full_name,
+    actorEmail: auth.profile.email,
+    action: "update",
+    entity: "employee",
+    comment: `Updated employee profile for ${data.full_name}`,
+  });
+
   return NextResponse.json({ data });
 }
 
@@ -69,7 +80,7 @@ export async function DELETE(
 
   const { data: target } = await auth.supabase
     .from("profiles")
-    .select("email")
+    .select("full_name, email")
     .eq("id", id)
     .single();
 
@@ -88,5 +99,15 @@ export async function DELETE(
   }
 
   revalidateTag("directory-profiles", { expire: 0 });
+
+  await logAudit({
+    actorId: auth.profile.id,
+    actorName: auth.profile.full_name,
+    actorEmail: auth.profile.email,
+    action: "delete",
+    entity: "employee",
+    comment: `Deleted employee account for ${target?.full_name ?? target?.email ?? id}`,
+  });
+
   return NextResponse.json({ data: { id } });
 }

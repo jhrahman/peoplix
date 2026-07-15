@@ -18,6 +18,8 @@ Do not put real passwords, service-role keys, or production secrets in this file
 - `LeaveStatus` = `"pending" | "approved" | "rejected"`
 - `OvertimeStatus` = `"pending" | "approved" | "rejected"`
 - `SignupRequestStatus` = `"pending" | "approved" | "rejected"`
+- `AuditAction` = `"create" | "update" | "delete" | "cancel" | "approve" | "reject"`
+- `AuditEntity` = `"leave_request" | "overtime_request" | "attendance" | "employee" | "signup_request" | "profile" | "password" | "account"`
 
 ---
 
@@ -333,17 +335,27 @@ This route serves two different actions, disambiguated by the request body shape
 
 ---
 
-## 6. Admin — `/api/admin/clear-database`
+## 6. Admin — `/api/admin/*`
 
 ### POST `/api/admin/clear-database`
-- **Auth**: **Admin only** (not HR — stricter than the usual Admin/HR gate, matches the Danger Zone UI)
+- **Auth**: **A single designated System Admin account only** — stricter than a plain `role === 'admin'` check. The route first requires `role === 'admin'` (`requireRole`), then additionally checks the caller's email against `isSystemAdmin()` (`lib/protected-employees.ts`) and rejects any other Admin, HR, or Employee account. The Danger Zone UI is not merely disabled for everyone else — it's not rendered in the DOM at all.
 - **Body**: none
 - **Behavior**: Permanently deletes **all rows** from `leave_requests`, `leave_balances`, `holidays`, `attendance`, and `overtime_requests`. Never touches `profiles` or Supabase Auth users — no accounts are affected.
 - **Success (200)**: `{ "data": { "cleared": ["leave_requests", "leave_balances", "holidays", "attendance", "overtime_requests"] } }`
 - **Errors**:
   - `401` — not logged in
-  - `403` — logged in but not Admin (HR included)
+  - `403` — logged in but not the System Admin account (includes every other Admin and HR account)
   - `500` — deletion failed partway through (message names which table)
+
+### POST `/api/admin/clear-audit-logs`
+- **Auth**: **Admin only** (not HR) — the usual Admin gate, deliberately *not* restricted to the System Admin account like Clear Database above, since this only clears history, not operational data.
+- **Body**: none
+- **Behavior**: Permanently deletes **all rows** from `audit_logs`, for every employee. Does not touch any other table.
+- **Success (200)**: `{ "data": { "deleted": <count> } }`
+- **Errors**:
+  - `401` — not logged in
+  - `403` — logged in but not Admin (HR included)
+  - `500` — deletion failed
 
 ---
 
@@ -404,20 +416,31 @@ them is **Admin only** — not HR, unlike every other Admin/HR-gated resource in
 
 ---
 
-## 8. Settings (profile self-edit + password) — no dedicated API route
+## 8. Settings (profile self-edit + password)
 
-`/settings` doesn't go through `/api/*` at all for these two actions:
+`/settings` doesn't go through `/api/*` for the mutation itself on these two actions:
 - **Profile edit** (full name, phone, department, designation — email is never editable) is a Next.js
   **Server Action** (`updateOwnProfile` in `lib/actions/profile.ts`), called directly from the form,
   not a REST endpoint. RLS (`profiles_update_own_or_staff`) already restricts this to the caller's own
-  row regardless of role.
+  row regardless of role. Writes an `audit_logs` entry (`entity: "profile"`) on success.
 - **Change password** calls Supabase Auth directly from the client (`supabase.auth.updateUser({ password })`)
   — same mechanism `/reset-password` uses, just without the recovery-token step since the user already
   has an active session.
 
-If you need to exercise either via an API client rather than the UI, you'll need a valid Supabase
-session and must call these through the Supabase client SDK/REST directly — there is nothing under
-`/api/` to call for these two actions.
+If you need to exercise either mutation via an API client rather than the UI, you'll need a valid
+Supabase session and must call these through the Supabase client SDK/REST directly.
+
+### POST `/api/settings/password-changed`
+- **Auth**: Session required
+- **Body**: none
+- **Behavior**: Not a mutation route — the actual password update happens client-side via Supabase
+  Auth directly (see above), which has no server-side hook of its own. This route exists purely so a
+  successful password change can be recorded in the audit log (`entity: "password"`), with the actor
+  identity taken from the caller's own session cookie (not client-supplied) so it can't be spoofed.
+  The client fires this right after `updateUser()` succeeds; a failure here doesn't affect the password
+  change itself.
+- **Success (200)**: `{ "data": { "ok": true } }`
+- **Errors**: `401` — not logged in
 
 The **Delete Account** action on the same page does go through a dedicated route — see §10 below.
 
@@ -453,6 +476,55 @@ the logged-in user's access token — there is nothing under `/api/` to call for
 
 ---
 
+## 11. Audit Log — `/audit-log` (no dedicated read route) + `/api/admin/clear-audit-logs`
+
+`/audit-log` is a Server Component that queries the `audit_logs` table directly through Supabase
+(no `/api/*` GET route backs it — same pattern as Team Directory in §9), using the caller's own
+session so RLS does the actual scoping:
+- **Employee/HR**: `audit_logs_select_own_or_admin` RLS policy restricts them to rows where
+  `actor_id = auth.uid()` — their own history only.
+- **Admin**: the same policy also allows `current_role() = 'admin'`, so Admin sees every employee's
+  history. The page adds a client-side, real-time search box (name/email/comment) for Admin only —
+  everything else (the date-range filter) is available to every role and filters entirely client-side
+  over already-fetched rows.
+- **Retention**: every query (regardless of role) is clamped to the last **10 days**
+  (`AUDIT_LOG_RETENTION_DAYS` in `lib/audit.ts`) — rows older than that are never shown, even if the
+  daily cleanup cron (below) hasn't caught up to physically delete them yet.
+
+If you need to exercise the read side via an API client rather than the UI, query Supabase's
+PostgREST endpoint directly (`GET {SUPABASE_URL}/rest/v1/audit_logs`) with the logged-in user's
+access token — there is nothing under `/api/` to call for reading audit logs. See §6 above for the
+one write route this feature does have (`POST /api/admin/clear-audit-logs`, Admin-only).
+
+**Retention cleanup (internal, not user-callable)**: `GET /api/cron/audit-log-cleanup` is hit daily
+by Vercel Cron (`vercel.json`), not by any client. It requires an `Authorization: Bearer <CRON_SECRET>`
+header matching the `CRON_SECRET` env var — Vercel sends this automatically when invoking the cron;
+any other caller gets `401`. It hard-deletes every `audit_logs` row older than the 10-day retention
+window and returns `{ "data": { "deleted": <count> } }`.
+
+---
+
+## 12. Auth — `/api/auth/forgot-password`
+
+### POST `/api/auth/forgot-password`
+- **Auth**: none — publicly callable from the login page's "Forgot password?" dialog
+- **Body (JSON)**:
+  ```json
+  { "email": "someone@example.com" }
+  ```
+- **Behavior**: Looks up the email against `profiles` (case-insensitive) using the service-role
+  client. If no matching account exists, returns `404` with a plain "no account" message — deliberately
+  **not** the ambiguous "if an account exists…" wording, since this is an internal HR tool where
+  account-enumeration risk is accepted in exchange for a clearer user experience. If a match is found,
+  triggers Supabase's `resetPasswordForEmail` (same mechanism the invite flow uses) and returns success.
+- **Success (200)**: `{ "data": { "sent": true } }`
+- **Errors**:
+  - `400` — missing `email`
+  - `404` — `{ "error": "No user found with this email. Please Sign Up first" }`
+  - `500` — lookup or send failed
+
+---
+
 ## Quick reference table
 
 | Method | Endpoint | Auth | Purpose |
@@ -479,10 +551,15 @@ the logged-in user's access token — there is nothing under `/api/` to call for
 | POST | `/api/overtime` | Session | Log overtime (self-entry only) |
 | PATCH | `/api/overtime/{id}` | Admin only (`status` body) or Session (owner, edit body) | Approve/reject a pending entry, or self-edit your own pending entry |
 | DELETE | `/api/overtime/{id}` | Session | Delete own pending overtime entry (or Admin) |
-| POST | `/api/admin/clear-database` | Admin only | Wipe leave/holiday/attendance/overtime data (not accounts) |
+| POST | `/api/admin/clear-database` | System Admin only | Wipe leave/holiday/attendance/overtime data (not accounts) |
+| POST | `/api/admin/clear-audit-logs` | Admin only | Wipe all audit log history |
 | GET | `/api/signup-requests` | Admin only | List pending sign-up/access requests |
 | POST | `/api/signup-requests` | None (public) | Submit a self-service access request from `/signup` |
 | PATCH | `/api/signup-requests/{id}` | Admin only | Approve (creates account + sends invite email) or reject a request |
-| — | `/settings` (no API route) | Session | Server Action + direct Supabase Auth calls — see §8 |
+| — | `/settings` (no API route for the mutation) | Session | Server Action + direct Supabase Auth calls — see §8 |
+| POST | `/api/settings/password-changed` | Session | Audit-log-only hook, fired after a client-side password change succeeds — see §8 |
 | — | `/directory` (no API route) | Session | Reads `profiles` directly via Supabase — see §9 |
 | DELETE | `/api/account` | Session | Delete your own account (all roles) — see §10 |
+| — | `/audit-log` (no API route) | Session | Reads `audit_logs` directly via Supabase, RLS-scoped — see §11 |
+| POST | `/api/auth/forgot-password` | None (public) | Check an email against real accounts and send a reset link — see §12 |
+| GET | `/api/cron/audit-log-cleanup` | `CRON_SECRET` bearer token (Vercel Cron only) | Daily hard-delete of audit logs older than 10 days — see §11 |

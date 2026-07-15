@@ -28,18 +28,22 @@ App URL: https://peoplix-hr.vercel.app/settings
 
 ## Danger Zone — visibility & access control
 
+The Danger Zone is restricted to a single, hardcoded **System Admin** account
+(`lib/protected-employees.ts` → `isSystemAdmin()`), not every account with `role = admin`.
+
 | # | Action | Test Data | Expected Result |
 |---|--------|-----------|------------------|
-| 8 | Log in as an Employee and scroll to the Danger Zone section | Valid Employee account | "Clear Database" button is visible but disabled; hovering shows an "Admin only" tooltip |
-| 9 | Log in as HR and view the Danger Zone section | Valid HR account | "Clear Database" button is disabled with the same "Admin only" tooltip |
-| 10 | Log in as Admin and view the Danger Zone section | Valid Admin account | "Clear Database" button is enabled and clickable |
-| 11 | As a non-admin, attempt to trigger the clear-database API directly (e.g. via dev tools/API client) | Employee or HR session token | Server rejects the request (403/401), independent of the disabled UI button |
+| 8 | Log in as an Employee and open Settings | Valid Employee account | No Danger Zone section appears anywhere on the page — not visible, not disabled, not in the page DOM at all |
+| 9 | Log in as HR and open Settings | Valid HR account | Same as above — no Danger Zone section |
+| 9a | Log in as an Admin account that is **not** the designated System Admin | An Admin-role account whose email isn't the System Admin's | Same as above — no Danger Zone section, even though the role is Admin |
+| 10 | Log in as the designated System Admin account and view Settings | The System Admin's account | Danger Zone section is visible with an enabled "Clear Database" button |
+| 11 | As any non-System-Admin account, attempt to trigger the clear-database API directly (e.g. via dev tools/API client) | Employee, HR, or a non-System-Admin Admin session token | Server rejects the request (`403`/`401`) independent of the UI — the route checks `role === 'admin'` first, then separately checks the account is the System Admin |
 
 ## Danger Zone — clearing data
 
 | # | Action | Test Data | Expected Result |
 |---|--------|-----------|------------------|
-| 12 | As Admin, click "Clear Database" | N/A | Confirmation dialog opens warning that leave requests, balances, holidays, attendance, and overtime records will be permanently deleted, and that accounts are never touched |
+| 12 | As the System Admin, click "Clear Database" | N/A | Confirmation dialog opens warning that leave requests, balances, holidays, attendance, and overtime records will be permanently deleted, and that accounts are never touched |
 | 13 | In the confirmation dialog, leave the confirmation input empty and try to confirm | Confirmation input: (blank) | "Clear Database" action button in the dialog remains disabled |
 | 14 | Type an incorrect confirmation phrase | Input: "delete all data" (wrong case) or "DELETE" (incomplete) | Action button remains disabled; phrase must match exactly |
 | 15 | Type the exact required phrase "DELETE ALL DATA" | Input: `DELETE ALL DATA` | Action button becomes enabled |
@@ -48,6 +52,22 @@ App URL: https://peoplix-hr.vercel.app/settings
 | 18 | After clearing, revisit the Dashboard, Leave, Holidays, Attendance, and Overtime pages | N/A | Each page shows correct empty states (no stale data, no errors) rather than leftover cached records |
 | 19 | After clearing, use "Generate default BD holidays" on the Holidays page to recover | N/A | Default holiday set is restored successfully |
 | 20 | Trigger "Clear Database" a second time immediately after a successful clear | Repeat steps 12–17 | Operation completes without error even with already-empty tables (idempotent) |
+
+## Audit Log Cleanup — visibility & access control
+
+Unlike Danger Zone, this is gated to **any** Admin account (`role = admin`), not narrowed to the
+System Admin — clearing log history is lower-stakes than wiping operational data. For the Audit Log
+page itself (viewing, search, date filter, retention), see
+[`11-audit-log.md`](11-audit-log.md).
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 20a | Log in as an Employee or HR and open Settings | Valid Employee/HR account | No "Audit Log Cleanup" section appears |
+| 20b | Log in as any Admin (including a non-System-Admin one) and open Settings | Any Admin-role account | "Audit Log Cleanup" section is visible with a "Delete All Audit Logs" button — unlike Danger Zone, this does not require being the System Admin |
+| 20c | Click "Delete All Audit Logs" | N/A | Confirmation dialog opens warning that all audit log entries for every employee will be permanently deleted, and that it doesn't affect leave/overtime/attendance/employee records |
+| 20d | Click "Cancel" instead of confirming | N/A | Dialog closes; no logs are deleted |
+| 20e | Confirm the deletion | Confirm click | Button shows "Deleting..." while in flight; on success, the Audit Log page shows no entries for any employee |
+| 20f | As a non-Admin, attempt to trigger the clear-audit-logs API directly (e.g. via dev tools/API client) | Employee or HR session token | Server rejects the request (`403`/`401`), independent of the UI |
 
 ## Delete Account — visibility & confirmation
 

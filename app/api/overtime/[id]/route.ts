@@ -3,7 +3,8 @@ import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { todayInDhaka } from "@/lib/attendance";
 import { isValidOvertimeHours } from "@/lib/overtime";
-import type { OvertimeRequest } from "@/lib/types";
+import { logAudit } from "@/lib/audit";
+import type { OvertimeRequest, Profile } from "@/lib/types";
 
 export async function PATCH(
   request: Request,
@@ -34,9 +35,9 @@ export async function PATCH(
 
   const { data: existing, error: fetchError } = await auth.supabase
     .from("overtime_requests")
-    .select("*")
+    .select("*, employee:profiles!overtime_requests_employee_id_fkey(full_name)")
     .eq("id", id)
-    .single<OvertimeRequest>();
+    .single<OvertimeRequest & { employee: { full_name: string } | null }>();
 
   if (fetchError || !existing) {
     return NextResponse.json({ error: "Overtime request not found" }, { status: 404 });
@@ -59,6 +60,15 @@ export async function PATCH(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  await logAudit({
+    actorId: auth.profile.id,
+    actorName: auth.profile.full_name,
+    actorEmail: auth.profile.email,
+    action: status === "approved" ? "approve" : "reject",
+    entity: "overtime_request",
+    comment: `${status === "approved" ? "Approved" : "Rejected"} ${existing.employee?.full_name ?? "an employee"}'s ${existing.hours}h overtime (${existing.date})`,
+  });
 
   return NextResponse.json({ data });
 }
@@ -137,6 +147,23 @@ async function handleSelfEdit(id: string, body: Record<string, unknown>) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  if (profile) {
+    await logAudit({
+      actorId: profile.id,
+      actorName: profile.full_name,
+      actorEmail: profile.email,
+      action: "update",
+      entity: "overtime_request",
+      comment: `Updated pending overtime entry (${date}, ${numericHours}h)`,
+    });
+  }
+
   return NextResponse.json({ data });
 }
 
@@ -155,6 +182,12 @@ export async function DELETE(
 
   const { id } = await params;
 
+  const { data: existing } = await supabase
+    .from("overtime_requests")
+    .select("*")
+    .eq("id", id)
+    .single<OvertimeRequest>();
+
   // RLS already restricts this to the employee's own pending entries or an Admin.
   const { error, count } = await supabase
     .from("overtime_requests")
@@ -170,6 +203,23 @@ export async function DELETE(
       { error: "Entry not found, not yours, or no longer pending" },
       { status: 404 },
     );
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  if (profile && existing) {
+    await logAudit({
+      actorId: profile.id,
+      actorName: profile.full_name,
+      actorEmail: profile.email,
+      action: "cancel",
+      entity: "overtime_request",
+      comment: `Cancelled pending overtime entry (${existing.date}, ${existing.hours}h)`,
+    });
   }
 
   return NextResponse.json({ data: { id } });

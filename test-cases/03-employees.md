@@ -48,6 +48,16 @@ Access: Admin and HR only.
 | 18a | Log in as Admin and look for a delete action on the protected account (`tflash978@gmail.com`) | N/A | No delete icon is shown for that row — every other employee still has one |
 | 18b | Attempt to delete the protected account via direct API call (`DELETE /api/employees/{id}`) | Admin session, protected account's id | Request is rejected (`403`) even though the caller is Admin — this account can never be deleted, UI-hidden or not |
 
+## Search
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 18c | Type into the search box above the Employees table | A test employee's full name | Table filters in real time (no submit button, no page reload) to rows matching the name |
+| 18d | Search by a partial email | A substring of a known employee's email | Matching row(s) remain visible; non-matching rows are filtered out |
+| 18e | Search by department or designation | A known department/designation value | Rows with a matching department or designation remain visible |
+| 18f | Search for a value that matches no employee | Random string, e.g. "zzzznotreal" | Table shows an empty state ("No employees match your search.") instead of an empty table with no explanation |
+| 18g | Clear the search box (✕ button or manually) | N/A | Full employee list reappears |
+
 ## Import / Export
 
 | # | Action | Test Data | Expected Result |

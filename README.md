@@ -21,21 +21,22 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 
 ## ✨ Features
 
-- **Authentication** — Supabase Auth session-cookie login, forgot-password / invite flow (`/reset-password`), no open account creation — accounts are provisioned by Admin/HR, or self-requested via `/signup` and gated behind Admin approval (see **Access requests** below).
+- **Authentication** — Supabase Auth session-cookie login, forgot-password / invite flow (`/reset-password`), no open account creation — accounts are provisioned by Admin/HR, or self-requested via `/signup` and gated behind Admin approval (see **Access requests** below). "Forgot password?" checks the email against real accounts server-side in real time — a registered email gets a reset link and a generic "sent" confirmation, while an unregistered one is told plainly ("No user found with this email. Please Sign Up first") rather than the ambiguous "if an account exists…" wording, since this is an internal HR tool rather than a public product where account enumeration is a meaningful risk.
 - **Access requests** — anyone can submit a self-service request from `/signup` (name/email/department/designation/mobile) with an animated success confirmation; it only lands in a `signup_requests` table — no account exists until an Admin reviews it from the Employees page. Approve/Reject buttons show a live "Approving…"/"Rejecting…" state, and a dedicated orange-gradient dashboard stat tile surfaces the pending count to Admins. Approving creates the account exactly like an Admin-added employee and sends the same branded password-setup email.
 - **Role-based access (RBAC)** — `admin`, `hr`, `employee`, enforced by Postgres Row-Level Security *and* re-checked server-side in every API route (never trusted from the client alone).
 - **Dashboard** — at-a-glance stat tiles and charts for hours worked, overtime, leave balance, upcoming holidays, and account role, plus Admin/HR-only approval-queue counters (leave, overtime, and — Admin only — pending access requests).
-- **Employee management** — Admin/HR can add, edit, and remove employees; assign roles; department/designation fields. Adding an employee sends the same branded invite email as an approved access request. A small hardcoded allowlist of protected accounts can never be removed, even by Admin, re-checked server-side.
+- **Employee management** — Admin/HR can add, edit, and remove employees; assign roles; department/designation fields. Adding an employee sends the same branded invite email as an approved access request. A small hardcoded allowlist of protected accounts can never be removed, even by Admin, re-checked server-side. A real-time client-side search box (name/email/department/designation) sits above the table, matching the Directory page's search UX.
 - **Team directory** — read-only, searchable (name/department/designation/email) profile listing visible to **every** role — unlike the Employees page, any employee can look up a colleague's contact details. One-click copy-to-clipboard on each email address, and an instant clear (✕) button on the search box.
 - **Leave management** — apply for Casual/Sick/Annual leave, live day-count preview, Admin/HR approval queue, automatic balance deduction on approval, per-employee balance view, and self-service edit/cancel while a request is still pending (fix a typo without waiting on HR).
 - **Overtime tracking** — log overtime manually (date + hours in 0.5h steps, one entry per day), Admin-only approval (HR can view but not approve), self-service edit/cancel while still pending, a per-employee summary (pending/approved/rejected) and matching dashboard widgets.
 - **Holiday calendar** — shared company holiday list, recurring-holiday support, and a one-click "generate default Bangladesh public holidays for this year" recovery action available to any signed-in user.
 - **Attendance** — one-click check-in/out with all times shown in Bangladesh Standard Time (12-hour AM/PM, regardless of the viewer's own device timezone), real-time in-flight/success feedback on the check-in/out buttons, automatic duration calculation, and a self-service manual override/correction (e.g. fix an accidental early checkout) — no approval step required. Any role can delete their own **today's** record to re-check-in; past records can't be deleted by anyone, including Admin. History is filterable by date range (persisted in the URL, so it survives a refresh).
 - **Import / Export** — CSV and XLSX for Employees, Leave requests, and Holidays, with a downloadable template, row-by-row validation preview, and per-row import status.
+- **Audit Log** — a `/audit-log` page (sits right before Settings in the nav) records who did what: leave apply/edit/cancel/approve/reject, overtime log/edit/cancel/approve/reject, attendance check-in/out/edit/delete, employee create/update/delete, signup approve/reject, profile edits, password changes, and account deletion — each entry shows the employee's name, email, a Bangladesh-time (12-hour) timestamp, the action, and a short plain-language comment. Every role can see their own history; only Admin can see everyone's, with a real-time name/email/comment search box. A simple from/to date filter (native date inputs, mutually clamped so an invalid range can't be picked) narrows the list, entirely client-side. Entries are kept for **10 days** (shown as a banner on the page) and then automatically deleted by a daily Vercel Cron job, to stay within Supabase's free-tier storage cap.
 - **Settings** — every role can self-edit their own Full name, Phone, Department, and Designation (Email is never editable), plus change their own password directly — no need to go through the forgot-password email flow just to update a password.
-- **Danger Zone** — Admin-only, type-to-confirm wipe of all leave/holiday/attendance/overtime data; employee accounts are never touched.
+- **Danger Zone** — restricted to a single designated System Admin account (not just any Admin role holder), type-to-confirm wipe of all leave/holiday/attendance/overtime data; employee accounts are never touched. Fully hidden (not merely disabled) for everyone else, including other Admins, both in the UI and re-checked server-side. Any Admin (not just the System Admin) can separately clear all Audit Log history from Settings, since that's just clearing history rather than operational data.
 - **Delete Account** — every role can permanently delete their own account from Settings, behind a type-to-confirm dialog with a live "Deleting Account..." state; deletes the Supabase Auth user (cascading to their profile and all of their leave/attendance/overtime records) and redirects to `/login`.
-- **Polish** — page-transition loading states, spinner feedback on in-flight approve/reject actions, a proper pointer cursor on every button, responsive/mobile layout, empty states everywhere, `data-testid` attributes on every interactive element for automated testing.
+- **Polish** — page-transition loading states, spinner feedback on in-flight approve/reject actions, a proper pointer cursor on every button, responsive/mobile layout, empty states everywhere, `data-testid` attributes on every interactive element for automated testing. In-flight button states (Cancel, Check In/Out) stay showing "…ing" text until the server data is actually confirmed refreshed rather than a fixed timeout, so they never flash back to the idle label right before the UI updates. On mobile, the top navbar is sticky (with a fully opaque background so scrolled content can't tint it) so the menu, theme toggle, and user menu stay reachable without scrolling back up; desktop keeps the original static, translucent header.
 - **Brand assets** — code-generated favicon, apple-touch icon, and Open Graph image (teal gradient mark, no external design tool).
 
 ## 🧱 Stack
@@ -49,6 +50,7 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 | Import/Export | `papaparse` (CSV) + `exceljs` (XLSX) |
 | Hosting | Vercel (native GitHub integration — auto-deploy on push to `main`) |
 | CI | GitHub Actions (lint + build check on every push/PR) |
+| Scheduled jobs | Vercel Cron (`vercel.json`) — daily Audit Log retention cleanup |
 
 ## 📁 Project structure
 
@@ -65,23 +67,27 @@ app/
     overtime/                  Log, summary, Admin-only approvals
     holidays/                  Holiday calendar
     attendance/                Check-in/out, history, overrides
-    settings/                  Profile self-edit (name/phone/department/designation), change password, Danger Zone, Delete Account
+    audit-log/                 Who-did-what history (all roles, Admin-only cross-employee search)
+    settings/                  Profile self-edit (name/phone/department/designation), change password, Danger Zone (System Admin only), Audit Log Cleanup (Admin), Delete Account
   api/                      REST endpoints, one resource per folder
-    employees/, leave/, holidays/, attendance/, overtime/, admin/clear-database/, signup-requests/, account/
-    (directory/ has no API route, and settings/ only backs Delete Account via account/ — see api-endpoints/API-ENDPOINTS.md §8-10)
+    employees/, leave/, holidays/, attendance/, overtime/, admin/clear-database/, admin/clear-audit-logs/,
+    signup-requests/, account/, auth/forgot-password/, settings/password-changed/, cron/audit-log-cleanup/
+    (directory/ and audit-log/ have no dedicated API route — they query Supabase directly from the
+    Server Component; settings/ only backs Delete Account via account/ — see api-endpoints/API-ENDPOINTS.md)
 components/
   ui/            shadcn primitives (Button, Card, Dialog, Table, ...)
   layout/        Sidebar, Navbar, ThemeToggle, page loader
-  {feature}/     Feature-specific components (employees/, directory/, leave/, overtime/, holidays/, attendance/, settings/, import-export/, dashboard/)
+  {feature}/     Feature-specific components (employees/, directory/, leave/, overtime/, holidays/, attendance/, audit-log/, settings/, import-export/, dashboard/)
 lib/
   supabase/      client.ts (browser), server.ts (server components/routes), admin.ts (service-role, server-only), middleware.ts
   auth/          requireRole() — server-side RBAC gate for API routes
   actions/       Next.js Server Actions
-  *.ts           leave.ts, attendance.ts, overtime.ts, bd-holidays.ts, import-export.ts — shared domain logic
+  *.ts           leave.ts, attendance.ts, overtime.ts, bd-holidays.ts, import-export.ts, datetime.ts (shared Dhaka-time helpers), audit.ts (audit log writer + retention constant) — shared domain logic
 supabase/
   migrations/    Numbered SQL migrations (schema, RLS policies, seed data, backfills)
 test-cases/      Manual QA test cases per page (Action / Test Data / Expected Result)
 api-endpoints/   API reference for manual/API-client testing
+vercel.json      Vercel Cron config (Audit Log retention cleanup)
 ```
 
 ## 🚀 Getting started
@@ -127,8 +133,11 @@ In the Vercel project's **Settings → Environment Variables**, set:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `CRON_SECRET` — any random string; Vercel automatically sends it as a bearer token when it invokes
+  the Audit Log retention cron (`vercel.json` → `/api/cron/audit-log-cleanup`), and the route checks
+  it. Without this set, the cleanup route just stays unreachable (401) rather than breaking anything.
 
-(same values as your local `.env.local`). Then add the deployed URL to Supabase's
+(same values as your local `.env.local`, plus `CRON_SECRET`). Then add the deployed URL to Supabase's
 **Authentication → URL Configuration → Redirect URLs** (e.g. `https://your-app.vercel.app/**`) so
 the invite/forgot-password flow (`/reset-password`) works in production too — Supabase silently
 falls back to the project's Site URL if the exact `redirect_to` isn't allow-listed, which otherwise
@@ -160,13 +169,15 @@ and both are structured so they can be turned directly into an automated suite (
   - [`08-overtime.md`](test-cases/08-overtime.md) — logging, validation, Admin-only approvals, dashboard widgets
   - [`09-directory.md`](test-cases/09-directory.md) — all-roles visibility, read-only listing, search
   - [`10-signup-requests.md`](test-cases/10-signup-requests.md) — public request form, duplicate handling, Admin-only approve/reject, resulting invite email
+  - [`11-audit-log.md`](test-cases/11-audit-log.md) — per-role visibility, Admin-only cross-employee search, date filter, retention notice, Admin-only "delete all logs" cleanup
 
   Every interactive element in the UI carries a `data-testid` attribute matching these test cases,
   so each row maps cleanly onto a Playwright step (locator → action → assertion).
 
 - **[`api-endpoints/API-ENDPOINTS.md`](api-endpoints/API-ENDPOINTS.md)** — full REST reference for
   every `/api/*` route (method, auth/role required, request body, response shape, error codes),
-  plus a note on the one page (`/directory`) that has no API route of its own. Use it for
+  plus a note on the two pages (`/directory`, `/audit-log`) that query Supabase directly and have
+  no dedicated API route of their own. Use it for
   real-time API testing with a tool like Postman/Insomnia, `curl`, or Playwright's `request`
   fixture: log in first and reuse the Supabase session cookie, then exercise each endpoint
   directly — e.g. `POST /api/leave` to file a request, `PATCH /api/leave/{id}` to approve/reject

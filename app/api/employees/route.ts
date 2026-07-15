@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
+import { logAudit } from "@/lib/audit";
 
 export async function GET() {
   const auth = await requireRole(["admin", "hr"]);
@@ -70,6 +71,15 @@ export async function POST(request: Request) {
     if (resetError) {
       console.error("Failed to send password setup email:", resetError.message);
     }
+
+    await logAudit({
+      actorId: auth.profile.id,
+      actorName: auth.profile.full_name,
+      actorEmail: auth.profile.email,
+      action: "create",
+      entity: "employee",
+      comment: `Created employee account for ${full_name} (${email})`,
+    });
 
     return NextResponse.json({ data: { id: created.user.id } }, { status: 201 });
   } catch (err) {

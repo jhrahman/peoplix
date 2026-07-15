@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 import type { Profile } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -72,15 +73,19 @@ export async function POST(request: Request) {
 
   let employeeId = user.id;
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  if (!profile) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Only Admin/HR may file a request on someone else's behalf (e.g. bulk import).
   if (employee_email) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single<Profile>();
-
-    if (!profile || !["admin", "hr"].includes(profile.role)) {
+    if (!["admin", "hr"].includes(profile.role)) {
       return NextResponse.json(
         { error: "Only Admin/HR can file leave for another employee" },
         { status: 403 },
@@ -118,6 +123,18 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  await logAudit({
+    actorId: profile.id,
+    actorName: profile.full_name,
+    actorEmail: profile.email,
+    action: "create",
+    entity: "leave_request",
+    comment:
+      employeeId === user.id
+        ? `Applied for ${leave_type} leave (${start_date} → ${end_date})`
+        : `Filed ${leave_type} leave for ${employee_email} (${start_date} → ${end_date})`,
+  });
 
   return NextResponse.json({ data }, { status: 201 });
 }

@@ -1,5 +1,4 @@
-const DHAKA_TIME_ZONE = "Asia/Dhaka";
-const DHAKA_UTC_OFFSET = "+06:00"; // Bangladesh Standard Time - fixed offset, no DST
+import { DHAKA_TIME_ZONE, DHAKA_UTC_OFFSET, toDhakaDateString } from "@/lib/datetime";
 
 export function formatTime(iso: string | null) {
   if (!iso) return "—";
@@ -31,7 +30,7 @@ export function hoursWorked(checkIn: string | null, checkOut: string | null) {
 // Dhaka time still lands on the correct day, regardless of the server's/
 // browser's own timezone.
 export function todayInDhaka() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: DHAKA_TIME_ZONE }).format(new Date());
+  return toDhakaDateString();
 }
 
 // For pre-filling a <input type="time"> from a stored timestamp, in Bangladesh Standard Time -

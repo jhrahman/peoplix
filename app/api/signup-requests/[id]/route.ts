@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
+import { logAudit } from "@/lib/audit";
 import type { SignupRequest } from "@/lib/types";
 
 export async function PATCH(
@@ -108,6 +109,15 @@ export async function PATCH(
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
+
+    await logAudit({
+      actorId: auth.profile.id,
+      actorName: auth.profile.full_name,
+      actorEmail: auth.profile.email,
+      action: status === "approved" ? "approve" : "reject",
+      entity: "signup_request",
+      comment: `${status === "approved" ? "Approved" : "Rejected"} signup request for ${existing.full_name} (${existing.email})`,
+    });
 
     return NextResponse.json({ data: updated });
   } catch (err) {

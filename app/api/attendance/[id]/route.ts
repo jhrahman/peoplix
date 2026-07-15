@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { todayInDhaka } from "@/lib/attendance";
-import type { Attendance } from "@/lib/types";
+import { logAudit } from "@/lib/audit";
+import type { Attendance, Profile } from "@/lib/types";
 
 export async function PATCH(
   request: Request,
@@ -24,13 +25,21 @@ export async function PATCH(
   // RLS scopes this to the employee's own row or staff.
   const { data: existing, error: fetchError } = await supabase
     .from("attendance")
-    .select("*")
+    .select("*, employee:profiles!attendance_employee_id_fkey(full_name)")
     .eq("id", id)
-    .single<Attendance>();
+    .single<Attendance & { employee: { full_name: string } | null }>();
 
   if (fetchError || !existing) {
     return NextResponse.json({ error: "Attendance record not found" }, { status: 404 });
   }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  const isOwnRecord = existing.employee_id === user.id;
 
   if (!isOverride) {
     // Quick "Check Out" button: stamp check_out with the current time.
@@ -50,6 +59,17 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    if (profile) {
+      await logAudit({
+        actorId: profile.id,
+        actorName: profile.full_name,
+        actorEmail: profile.email,
+        action: "update",
+        entity: "attendance",
+        comment: `Checked out for ${existing.date}`,
+      });
     }
 
     return NextResponse.json({ data });
@@ -75,6 +95,19 @@ export async function PATCH(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  if (profile) {
+    await logAudit({
+      actorId: profile.id,
+      actorName: profile.full_name,
+      actorEmail: profile.email,
+      action: "update",
+      entity: "attendance",
+      comment: isOwnRecord
+        ? `Updated own attendance record for ${existing.date}`
+        : `Updated ${existing.employee?.full_name ?? "an employee"}'s attendance record for ${existing.date}`,
+    });
   }
 
   return NextResponse.json({ data });
@@ -116,6 +149,23 @@ export async function DELETE(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  if (profile) {
+    await logAudit({
+      actorId: profile.id,
+      actorName: profile.full_name,
+      actorEmail: profile.email,
+      action: "delete",
+      entity: "attendance",
+      comment: `Deleted today's attendance record`,
+    });
   }
 
   return NextResponse.json({ data: { id } });

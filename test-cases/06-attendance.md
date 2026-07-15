@@ -7,10 +7,10 @@ App URL: https://peoplix-hr.vercel.app/attendance
 | # | Action | Test Data | Expected Result |
 |---|--------|-----------|------------------|
 | 1 | Open the Attendance page before checking in for the day | Account with no attendance record for today | "Today" card shows "You haven't checked in yet." with a "Check In" button |
-| 2 | Click "Check In" | N/A | Button briefly shows "Checking in..." then a checkmark ("Checked in") for ~1.2s before the card updates to show "Checked in at [time]" with a "Check Out" button; the stamped time comes from the server, not the browser clock |
+| 2 | Click "Check In" | N/A | Button shows "Checking in..." and stays disabled until the server confirms the check-in; the card then swaps straight to "Checked in at [time]" with a "Check Out" button — no flash back to "Check In" in between. The stamped time comes from the server, not the browser clock |
 | 3 | Refresh the page after checking in but before checking out | Browser refresh | Card still shows the "Checked in at [time]" state (not reset to "not checked in") |
 | 4 | Click "Check In" again after already checked in today | N/A | Duplicate check-in is not created for the same day (button/state no longer offers "Check In") |
-| 5 | Click "Check Out" | N/A | Button briefly shows "Checking out..." then a checkmark ("Checked out") for ~1.2s; card updates to show total duration worked and both check-in/check-out times |
+| 5 | Click "Check Out" | N/A | Button shows "Checking out..." and stays disabled until the server confirms; the card then swaps straight to showing total duration worked and both check-in/check-out times — no flash back to "Check Out" in between |
 | 6 | Refresh the page after checking out for the day | Browser refresh | Card continues to show the completed duration for today, not a re-offer to check in/out |
 | 7 | View "My history" table after several days of check-in/out | Account with 2+ days of attendance | Table lists date, check-in time, check-out time, and computed duration for each day, most recent first |
 | 8 | View "My history" table for a brand-new account | Freshly created employee, no history | Table shows an empty-state message ("No attendance history yet.") |

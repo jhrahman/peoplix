@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { todayInDhaka } from "@/lib/attendance";
 import { isValidOvertimeHours } from "@/lib/overtime";
+import { logAudit } from "@/lib/audit";
 import type { Profile } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -89,6 +90,23 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single<Profile>();
+
+  if (profile) {
+    await logAudit({
+      actorId: profile.id,
+      actorName: profile.full_name,
+      actorEmail: profile.email,
+      action: "create",
+      entity: "overtime_request",
+      comment: `Logged ${numericHours}h overtime for ${date}`,
+    });
   }
 
   return NextResponse.json({ data }, { status: 201 });

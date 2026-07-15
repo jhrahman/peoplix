@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 
 export async function updateOwnProfile(formData: FormData) {
   const supabase = await createClient();
@@ -35,6 +36,15 @@ export async function updateOwnProfile(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
+
+  await logAudit({
+    actorId: user.id,
+    actorName: full_name,
+    actorEmail: user.email ?? "",
+    action: "update",
+    entity: "profile",
+    comment: "Updated own profile details",
+  });
 
   revalidatePath("/settings");
   revalidatePath("/");

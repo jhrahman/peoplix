@@ -39,6 +39,7 @@ export function ChangePasswordForm() {
     setPassword("");
     setConfirmPassword("");
     toast.success("Password updated.");
+    fetch("/api/settings/password-changed", { method: "POST" }).catch(() => {});
   }
 
   return (

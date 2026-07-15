@@ -29,7 +29,7 @@ App URL: https://peoplix-hr.vercel.app/overtime
 |---|--------|-----------|------------------|
 | 12 | View "My overtime entries" table with existing entries | Account with 1+ logged entries | Table lists Date, Hours, Reason, Status (Pending/Approved/Rejected badge), and an Actions column |
 | 13 | View "My overtime entries" table for a brand-new account | Freshly created employee, no entries | Table shows "No overtime entries yet." |
-| 14 | Click "Cancel" on a Pending entry | Select a pending entry | Entry is removed from the table |
+| 14 | Click "Cancel" on a Pending entry | Select a pending entry | Button shows "Cancelling..." and stays disabled until the row is confirmed removed from the table — it never flashes back to "Cancel" for a moment before the row disappears |
 | 15 | Check for a "Cancel" action on an Approved or Rejected entry | Entry with status Approved or Rejected | No "Cancel" action is available for non-pending entries |
 
 ## Edit / override a pending entry

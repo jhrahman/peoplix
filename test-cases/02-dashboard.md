@@ -18,6 +18,8 @@ App URL: https://peoplix-hr.vercel.app/ (post-login landing page)
 | 10 | Inspect the "Upcoming holidays" widget when no holidays are seeded | Database with holidays table empty (e.g. right after Clear Database) | Widget shows an empty-state message, not a blank space or error |
 | 11 | Hover over a data point/bar in the attendance chart | Mouse hover | A tooltip appears showing the exact date and duration for that point |
 | 12 | Resize the browser to a mobile width (e.g. 375px) | Viewport resize / mobile device | Stat tiles and widgets stack vertically in a single column; no horizontal scrolling or overlapping content |
+| 12a | At mobile width, scroll down past the top of the page (on any dashboard page, not just this one) | Viewport ≤ ~768px, scroll down | The top navbar (hamburger menu, theme toggle, user menu) stays pinned near the top of the viewport instead of scrolling out of view; its background stays a solid, consistent color as content scrolls underneath it (no colored tinting/flashing from scrolled content, e.g. Settings' teal buttons) |
+| 12b | Resize back to desktop width and scroll down | Viewport ≥ 768px (`md` breakpoint), scroll down | Navbar behaves as before this change: static positioning (scrolls away with the page), translucent glass background — the mobile-only sticky/opaque behavior does not apply |
 | 13 | Reload the dashboard page | Browser refresh (F5) | A loading/spinner state briefly displays, then all widgets reload with current data (no stale/duplicate content) |
 | 14 | Navigate from the dashboard to another page and back | Click Leave → click Dashboard (sidebar) | Page-transition loader briefly appears; dashboard widgets reflect any changes made in the interim |
 
