@@ -28,8 +28,15 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequestSummary[] }) 
 
   async function handleCancel(id: string) {
     setCancelingId(id);
-    await fetch(`/api/leave/${id}`, { method: "DELETE" });
-    setCancelingId(null);
+    const res = await fetch(`/api/leave/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      // Leave it canceling==false only on failure — on success we keep
+      // showing "Cancelling..." until router.refresh() re-pulls the data
+      // and this row drops out of `requests`, so the label never flashes
+      // back to "Cancel" right before the row disappears.
+      setCancelingId(null);
+      return;
+    }
     router.refresh();
   }
 
@@ -79,7 +86,7 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequestSummary[] }) 
                       onClick={() => handleCancel(request.id)}
                       data-testid={`leave-cancel-${request.id}`}
                     >
-                      Cancel
+                      {cancelingId === request.id ? "Cancelling..." : "Cancel"}
                     </Button>
                   </div>
                 )}

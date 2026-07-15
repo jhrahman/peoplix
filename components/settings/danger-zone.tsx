@@ -18,11 +18,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const CONFIRM_PHRASE = "DELETE ALL DATA";
 
-export function DangerZone({ isAdmin }: { isAdmin: boolean }) {
+export function DangerZone() {
   const router = useRouter();
   const [confirmText, setConfirmText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,13 +49,6 @@ export function DangerZone({ isAdmin }: { isAdmin: boolean }) {
     router.refresh();
   }
 
-  const clearButton = (
-    <Button variant="destructive" disabled={!isAdmin} data-testid="danger-zone-clear-trigger">
-      <AlertTriangle className="h-4 w-4" />
-      Clear Database
-    </Button>
-  );
-
   return (
     <Card className="max-w-lg border-destructive/30">
       <CardHeader>
@@ -70,16 +62,10 @@ export function DangerZone({ isAdmin }: { isAdmin: boolean }) {
 
         <AlertDialog open={open} onOpenChange={setOpen}>
           <AlertDialogTrigger asChild>
-            {isAdmin ? (
-              clearButton
-            ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-block">{clearButton}</span>
-                </TooltipTrigger>
-                <TooltipContent>Admin only</TooltipContent>
-              </Tooltip>
-            )}
+            <Button variant="destructive" data-testid="danger-zone-clear-trigger">
+              <AlertTriangle className="h-4 w-4" />
+              Clear Database
+            </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

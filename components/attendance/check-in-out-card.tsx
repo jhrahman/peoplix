@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, LogIn, LogOut } from "lucide-react";
@@ -9,44 +9,59 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDuration, formatTime } from "@/lib/attendance";
 import type { Attendance } from "@/lib/types";
 
-type Status = "idle" | "loading" | "success";
+type PendingAction = "check-in" | "check-out" | null;
 
 export function CheckInOutCard({ today }: { today: Attendance | null }) {
   const router = useRouter();
-  const [status, setStatus] = useState<Status>("idle");
-  const loading = status === "loading";
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [justCompleted, setJustCompleted] = useState<PendingAction>(null);
+
+  // Wait for `today` itself to reflect the check-in/out (i.e. router.refresh()
+  // has actually re-pulled the row from the DB) before flipping to the success
+  // state — flipping on a fixed timeout races the refresh and flashes the
+  // stale label back for a moment.
+  useEffect(() => {
+    if (pendingAction === "check-in" && today?.check_in) {
+      setPendingAction(null);
+      setJustCompleted("check-in");
+      const timer = setTimeout(() => setJustCompleted(null), 1200);
+      return () => clearTimeout(timer);
+    }
+    if (pendingAction === "check-out" && today?.check_out) {
+      setPendingAction(null);
+      setJustCompleted("check-out");
+      const timer = setTimeout(() => setJustCompleted(null), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [today, pendingAction]);
 
   async function handleCheckIn() {
-    setStatus("loading");
+    setPendingAction("check-in");
     const res = await fetch("/api/attendance", { method: "POST" });
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       toast.error(json.error ?? "Failed to check in");
-      setStatus("idle");
+      setPendingAction(null);
       return;
     }
 
-    setStatus("success");
     router.refresh();
-    setTimeout(() => setStatus("idle"), 1200);
   }
 
   async function handleCheckOut() {
     if (!today) return;
-    setStatus("loading");
+    setPendingAction("check-out");
     const res = await fetch(`/api/attendance/${today.id}`, { method: "PATCH" });
     const json = await res.json().catch(() => ({}));
 
     if (!res.ok) {
       toast.error(json.error ?? "Failed to check out");
-      setStatus("idle");
+      setPendingAction(null);
       return;
     }
 
-    setStatus("success");
     router.refresh();
-    setTimeout(() => setStatus("idle"), 1200);
   }
 
   return (
@@ -64,15 +79,19 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
             <Button
               size="lg"
               onClick={handleCheckIn}
-              disabled={loading || status === "success"}
+              disabled={pendingAction === "check-in" || justCompleted === "check-in"}
               data-testid="attendance-check-in"
             >
-              {status === "success" ? (
+              {justCompleted === "check-in" ? (
                 <Check className="h-4 w-4" />
               ) : (
                 <LogIn className="h-4 w-4" />
               )}
-              {status === "success" ? "Checked in" : loading ? "Checking in..." : "Check In"}
+              {justCompleted === "check-in"
+                ? "Checked in"
+                : pendingAction === "check-in"
+                  ? "Checking in..."
+                  : "Check In"}
             </Button>
           </>
         ) : !today.check_out ? (
@@ -84,15 +103,19 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
               size="lg"
               variant="destructive"
               onClick={handleCheckOut}
-              disabled={loading || status === "success"}
+              disabled={pendingAction === "check-out" || justCompleted === "check-out"}
               data-testid="attendance-check-out"
             >
-              {status === "success" ? (
+              {justCompleted === "check-out" ? (
                 <Check className="h-4 w-4" />
               ) : (
                 <LogOut className="h-4 w-4" />
               )}
-              {status === "success" ? "Checked out" : loading ? "Checking out..." : "Check Out"}
+              {justCompleted === "check-out"
+                ? "Checked out"
+                : pendingAction === "check-out"
+                  ? "Checking out..."
+                  : "Check Out"}
             </Button>
           </>
         ) : (

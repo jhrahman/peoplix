@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,18 +18,31 @@ export function ForgotPasswordDialog() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
+    // This dialog's form is portaled outside the login form's DOM, but React
+    // events bubble through the component tree, not the DOM tree — without
+    // stopPropagation the login form's onSubmit fires too and complains
+    // about the missing password field.
+    e.stopPropagation();
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
-    const supabase = createClient();
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
+    const body = await res.json();
 
-    // Always show success, regardless of whether the email is registered,
-    // so this can't be used to enumerate accounts.
+    if (!res.ok) {
+      setError(body.error ?? "Something went wrong. Please try again.");
+      setLoading(false);
+      return;
+    }
+
     setSent(true);
     setLoading(false);
   }
@@ -43,6 +55,7 @@ export function ForgotPasswordDialog() {
         if (!next) {
           setSent(false);
           setEmail("");
+          setError(null);
         }
       }}
     >
@@ -62,7 +75,7 @@ export function ForgotPasswordDialog() {
         </DialogHeader>
         {sent ? (
           <p className="text-sm text-muted-foreground" data-testid="forgot-password-sent">
-            If an account exists for that email, a reset link is on its way.
+            A password reset link has been sent to your email.
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4" data-testid="forgot-password-form">
@@ -77,6 +90,11 @@ export function ForgotPasswordDialog() {
                 data-testid="forgot-password-email-input"
               />
             </div>
+            {error && (
+              <p className="text-sm text-destructive" data-testid="forgot-password-error">
+                {error}
+              </p>
+            )}
             <DialogFooter>
               <Button type="submit" disabled={loading} data-testid="forgot-password-submit">
                 {loading ? "Sending..." : "Send reset link"}
