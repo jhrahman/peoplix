@@ -29,6 +29,7 @@ Access: every role (Admin, HR, Employee).
 | 7 | As Admin, type a full or partial employee name into the search box | An existing employee's name | List filters in real time to entries whose actor name matches |
 | 8 | As Admin, search by a partial email | A substring of a known employee's email | Matching entries remain visible |
 | 9 | As Admin, search by comment text | A word likely to appear in a comment, e.g. "leave" or "overtime" | Entries whose comment contains that text remain visible |
+| 9a | As Admin, search by action label | e.g. "Created", "Updated", "Joined", "Approved" | **Every** entry with that action is shown, not just the entries whose comment text happens to contain the word — search matches against the action label itself, not only the comment |
 | 10 | As Admin, search for something that matches nothing | Random string, e.g. "zzzznotreal" | List shows "No audit logs match your filters." |
 | 11 | Log in as Employee or HR and check the Audit Log page | Valid Employee/HR account | No search box is shown at all — only the date filter is available |
 
@@ -52,18 +53,19 @@ right action label, and a comment that plainly describes what happened.
 
 | # | Action performed elsewhere in the app | Expected audit entry |
 |---|----------------------------------------|------------------------|
-| 19 | Apply for leave | Actor = applicant; action "Created"; comment mentions leave type and date range |
-| 20 | Self-edit a still-pending leave request | Actor = the owner; action "Updated" |
-| 21 | Cancel a pending leave request | Actor = whoever cancelled it; action "Cancelled" |
-| 22 | Admin/HR approves a leave request | Actor = the reviewer (not the employee whose leave it was); action "Approved"; comment names the employee and leave details |
-| 23 | Admin/HR rejects a leave request | Actor = the reviewer; action "Rejected" |
+| 19 | Apply for leave | Actor = applicant; action "Created"; comment mentions leave type, the weekday-only day count (e.g. "3d"), and date range |
+| 20 | Self-edit a still-pending leave request | Actor = the owner; action "Updated"; comment includes the (recalculated) day count |
+| 21 | Cancel a pending leave request | Actor = whoever cancelled it; action "Cancelled"; comment includes the day count |
+| 22 | Admin/HR approves a leave request | Actor = the reviewer (not the employee whose leave it was); action "Approved"; comment names the employee, the day count, and leave details |
+| 23 | Admin/HR rejects a leave request | Actor = the reviewer; action "Rejected"; comment includes the day count |
 | 24 | Log overtime | Actor = the employee; action "Created"; comment mentions hours and date |
 | 25 | Self-edit a pending overtime entry | Actor = the owner; action "Updated" |
 | 26 | Cancel a pending overtime entry | Actor = whoever cancelled it; action "Cancelled" |
 | 27 | Admin approves/rejects overtime | Actor = the Admin reviewer; action "Approved"/"Rejected" |
 | 28 | Check in for the day | Actor = the employee; action "Created"; comment mentions the date |
-| 29 | Check out | Actor = the employee; action "Updated"; comment mentions the date |
-| 30 | Staff manually overrides another employee's check-in/out times | Actor = the staff member (not the employee whose record it is); comment names the employee |
+| 29 | Check out | Actor = the employee; action "Updated"; comment mentions the date and the resulting duration (e.g. "8h 12m") |
+| 30 | Staff manually overrides another employee's check-in/out times | Actor = the staff member (not the employee whose record it is); comment names the employee and includes the resulting duration |
+| 30a | Manually correct only one of Check in/Check out, leaving the other unset | e.g. set Check in only, Check out remains empty | Comment shows "—" for the duration rather than a bogus/negative value |
 | 31 | Delete today's own attendance record | Actor = the employee; action "Deleted" |
 | 32 | Admin/HR creates a new employee | Actor = the creator; action "Created"; comment includes the new employee's name/email |
 | 33 | Admin/HR edits an employee's profile | Actor = the editor; action "Updated"; comment includes the employee's (possibly new) name |

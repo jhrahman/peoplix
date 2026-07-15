@@ -13,11 +13,12 @@ App URL: https://peoplix-hr.vercel.app/leave
 
 | # | Action | Test Data | Expected Result |
 |---|--------|-----------|------------------|
-| 3 | Click "Apply for leave" | N/A | Dialog opens with Leave type dropdown (Casual/Sick/Annual), Start date, End date, and optional Reason field |
-| 4 | Submit with Start date and End date left empty | Dates: (blank) | Browser's required-field validation blocks submission |
-| 5 | Select an End date earlier than the Start date | Start: 2026-08-10, End: 2026-08-05 | The "X days of leave" helper text does not display an invalid/negative day count; form either blocks submission or the day count is hidden until dates are valid |
-| 6 | Select a valid single-day range | Start: 2026-08-10, End: 2026-08-10 | Helper text reads "1 day of leave" |
-| 7 | Select a valid multi-day range | Start: 2026-08-10, End: 2026-08-14 | Helper text reads the correct number of days for that range |
+| 3 | Click "Apply for leave" | N/A | Dialog opens with Leave type dropdown (Casual/Sick/Annual), Start date, End date (calendar popovers), and optional Reason field |
+| 4 | Submit with Start date and End date left empty | Dates: (blank) | Submit button is disabled until both dates are picked; attempting to submit anyway shows "Start date and end date are required" |
+| 5 | Open the Start date calendar with an End date already picked (or vice versa) | Start: (picker), End: 2026-08-05 already set | Any day after the picked End date is greyed out and cannot be selected in the Start date calendar (and mirrored for End date against Start date) — an invalid range can't be picked in the first place |
+| 5a | Open either the Start date or End date calendar | N/A | Every Saturday and Sunday is greyed out and cannot be selected — leave can only start/end on a weekday |
+| 6 | Select a valid single-day range | Start: 2026-08-10 (Mon), End: 2026-08-10 (Mon) | Helper text reads "1 day of leave" |
+| 7 | Select a valid multi-day range spanning a weekend | Start: 2026-08-10 (Mon), End: 2026-08-14 (Fri) | Helper text reads "5 days of leave" — Saturday/Sunday within the range are excluded from the count |
 | 8 | Submit a valid leave request within available balance | Leave type: Casual, valid date range, Reason: "Family event" | Dialog closes; new row appears in "My leave requests" table with status "Pending" |
 | 9 | Submit a leave request that exceeds the remaining balance for that leave type | Leave type with 0 or few days left, request exceeding remaining days | Request is either rejected with a clear error message or flagged for review — verify actual product behavior (balance should never go negative without explicit approval) |
 | 10 | Submit a leave request with the Reason field left blank | Reason: (blank) | Request is submitted successfully since Reason is optional |
@@ -32,8 +33,8 @@ App URL: https://peoplix-hr.vercel.app/leave
 | 14 | Click the edit (pencil) icon on a Pending request | Select a pending request | Dialog opens titled "Edit leave request" with Leave type, Start date, End date, and Reason pre-filled with the request's current values |
 | 15 | Check for an edit (pencil) icon on an Approved or Rejected request | Request with status Approved or Rejected | No edit icon is shown — only Pending requests can be edited |
 | 16 | Change the Leave type and Reason in the edit dialog, then save | Leave type: Sick (was Casual), Reason: "Corrected — actually sick leave" | Dialog closes; the same row updates in place with the new type and reason, status remains "Pending" |
-| 17 | Change the Start/End dates in the edit dialog to fix a typo, then save | Start: 2026-08-11 (was 2026-08-10) | Row updates with the corrected dates and recalculated day count |
-| 18 | Clear the Start/End dates in the edit dialog and try to save | Dates: (blank) | Browser's required-field validation blocks submission |
+| 17 | Change the Start/End dates in the edit dialog to fix a typo, then save | Start: 2026-08-11 (was 2026-08-10) | Row updates with the corrected dates and recalculated (weekday-only) day count |
+| 18 | Clear the Start/End dates in the edit dialog and try to save | Dates: (blank) | Save button is disabled until both dates are set again |
 | 19 | Attempt to edit another employee's leave request via direct API call (bypassing the UI) | `PATCH /api/leave/{id}` with an edit-shaped body, using a different employee's request id | Server rejects with `403 Forbidden` ("You can only edit your own requests") |
 | 20 | Attempt to edit a request after it has been Approved or Rejected via direct API call | `PATCH /api/leave/{id}` with an edit-shaped body, on an already-reviewed request | Server rejects with "Only pending requests can be edited" |
 | 21 | Open the edit dialog, then click outside/close without saving | N/A | No changes are applied; row remains as it was before opening |

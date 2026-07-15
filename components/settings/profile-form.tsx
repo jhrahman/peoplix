@@ -60,11 +60,19 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="phone">Phone</Label>
+        <Label htmlFor="phone">Mobile</Label>
         <Input
           id="phone"
           name="phone"
+          type="tel"
+          inputMode="numeric"
           defaultValue={profile.phone ?? ""}
+          onChange={(e) => {
+            const hasInvalidChar = /[^\d+]/.test(e.target.value);
+            e.target.value = e.target.value.replace(/[^\d+]/g, "");
+            e.target.setCustomValidity(hasInvalidChar ? "Only numbers are allowed" : "");
+            if (hasInvalidChar) e.target.reportValidity();
+          }}
           data-testid="settings-phone"
         />
       </div>

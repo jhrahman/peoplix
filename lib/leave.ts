@@ -1,11 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LeaveBalance, LeaveType } from "@/lib/types";
 
+// Counts weekdays only - Saturdays and Sundays are the default weekend and
+// don't consume leave balance, since start/end date pickers already block
+// picking a weekend as either endpoint.
 export function leaveDays(startDate: string, endDate: string) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const diff = Math.round((end.getTime() - start.getTime()) / 86_400_000);
-  return diff + 1;
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+
+  let days = 0;
+  for (let d = start; d <= end; d = new Date(d.getTime() + 86_400_000)) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) days++;
+  }
+  return days;
 }
 
 export const LEAVE_TYPE_BALANCE_COLUMNS: Record<

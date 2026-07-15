@@ -79,7 +79,7 @@ export async function PATCH(
     actorEmail: auth.profile.email,
     action: status === "approved" ? "approve" : "reject",
     entity: "leave_request",
-    comment: `${status === "approved" ? "Approved" : "Rejected"} ${existing.employee?.full_name ?? "an employee"}'s ${existing.leave_type} leave (${existing.start_date} → ${existing.end_date})`,
+    comment: `${status === "approved" ? "Approved" : "Rejected"} ${existing.employee?.full_name ?? "an employee"}'s ${existing.leave_type} leave, ${leaveDays(existing.start_date, existing.end_date)}d (${existing.start_date} → ${existing.end_date})`,
   });
 
   return NextResponse.json({ data: updated });
@@ -166,7 +166,7 @@ async function handleSelfEdit(id: string, body: Record<string, unknown>) {
       actorEmail: profile.email,
       action: "update",
       entity: "leave_request",
-      comment: `Updated pending ${leave_type} leave request (${start_date} → ${end_date})`,
+      comment: `Updated pending ${leave_type} leave request, ${leaveDays(start_date, end_date)}d (${start_date} → ${end_date})`,
     });
   }
 
@@ -224,7 +224,7 @@ export async function DELETE(
       actorEmail: profile.email,
       action: "cancel",
       entity: "leave_request",
-      comment: `Cancelled pending ${existing.leave_type} leave request (${existing.start_date} → ${existing.end_date})`,
+      comment: `Cancelled pending ${existing.leave_type} leave request, ${leaveDays(existing.start_date, existing.end_date)}d (${existing.start_date} → ${existing.end_date})`,
     });
   }
 

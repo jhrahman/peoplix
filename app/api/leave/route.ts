@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { leaveDays } from "@/lib/leave";
 import type { Profile } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -124,6 +125,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  const days = leaveDays(start_date, end_date);
+  const daysLabel = `${days}d`;
+
   await logAudit({
     actorId: profile.id,
     actorName: profile.full_name,
@@ -132,8 +136,8 @@ export async function POST(request: Request) {
     entity: "leave_request",
     comment:
       employeeId === user.id
-        ? `Applied for ${leave_type} leave (${start_date} → ${end_date})`
-        : `Filed ${leave_type} leave for ${employee_email} (${start_date} → ${end_date})`,
+        ? `Applied for ${leave_type} leave, ${daysLabel} (${start_date} → ${end_date})`
+        : `Filed ${leave_type} leave for ${employee_email}, ${daysLabel} (${start_date} → ${end_date})`,
   });
 
   return NextResponse.json({ data }, { status: 201 });

@@ -6,12 +6,13 @@ App URL: https://peoplix-hr.vercel.app/settings
 
 | # | Action | Test Data | Expected Result |
 |---|--------|-----------|------------------|
-| 1 | Open the Settings page | Any valid account | "Your profile" card shows Email (read-only), Full name, Department, Designation, and Phone fields |
+| 1 | Open the Settings page | Any valid account | "Your profile" card shows Email (read-only), Full name, Department, Designation, and Mobile fields |
 | 2 | Attempt to edit the Email field | Click into the Email input | Field is disabled, shows a "Email can't be changed." note, and cannot be edited from this page |
 | 3 | Update the Department field and click "Save changes" | Department: "Updated Test Department" | Value is saved and persists after a page refresh |
 | 3a | Update the Designation field and click "Save changes" | Designation: "Updated Test Title" | Value is saved and persists after a page refresh |
 | 4 | Update the Full name field and click "Save changes" | Full name: "Updated Test Name" | Confirmation of save (page reflects new name); sidebar/navbar display name updates to match |
-| 5 | Update the Phone field and click "Save changes" | Phone: "+8801XXXXXXXXX" (test value) | Value is saved and persists after a page refresh |
+| 5 | Update the Mobile field and click "Save changes" | Mobile: "+8801XXXXXXXXX" (test value) | Value is saved and persists after a page refresh |
+| 5a | Type letters into the Mobile field | Mobile: "abc123" | Non-digit characters (other than a leading "+") are stripped as typed; the field's native validation bubble shows "Only numbers are allowed" |
 | 6 | Clear the required Full name field entirely and try to save | Full name: (blank) | Browser's required-field validation blocks submission |
 | 7 | Log in as a different role (Employee, HR, Admin) and open Settings | Each role in turn | All three roles can view and edit their own profile identically (including Department/Designation); no role-specific profile fields differ |
 | 7a | Resize the browser to a mobile width (e.g. 375px) while on Settings | Viewport resize | Department/Designation fields stack into a single column (from a two-column layout on wider screens); no overlapping content or horizontal scroll |

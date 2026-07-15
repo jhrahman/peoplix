@@ -484,7 +484,7 @@ session so RLS does the actual scoping:
 - **Employee/HR**: `audit_logs_select_own_or_admin` RLS policy restricts them to rows where
   `actor_id = auth.uid()` — their own history only.
 - **Admin**: the same policy also allows `current_role() = 'admin'`, so Admin sees every employee's
-  history. The page adds a client-side, real-time search box (name/email/comment) for Admin only —
+  history. The page adds a client-side, real-time search box (name/email/comment/action label) for Admin only —
   everything else (the date-range filter) is available to every role and filters entirely client-side
   over already-fetched rows.
 - **Retention**: every query (regardless of role) is clamped to the last **10 days**

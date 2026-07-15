@@ -47,9 +47,12 @@ export function AuditLogView({ logs, isAdmin }: { logs: AuditLog[]; isAdmin: boo
     return logs.filter((log) => {
       if (isAdmin && search.trim()) {
         const q = search.trim().toLowerCase();
-        const matches = [log.actor_name, log.actor_email, log.comment].some((field) =>
-          field.toLowerCase().includes(q),
-        );
+        const matches = [
+          log.actor_name,
+          log.actor_email,
+          log.comment,
+          ACTION_LABEL[log.action],
+        ].some((field) => field.toLowerCase().includes(q));
         if (!matches) return false;
       }
 

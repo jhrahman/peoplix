@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { todayInDhaka } from "@/lib/attendance";
+import { formatDuration, todayInDhaka } from "@/lib/attendance";
 import { logAudit } from "@/lib/audit";
 import type { Attendance, Profile } from "@/lib/types";
 
@@ -50,9 +50,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Already checked out" }, { status: 400 });
     }
 
+    const checkOutAt = new Date().toISOString();
+
     const { data, error } = await supabase
       .from("attendance")
-      .update({ check_out: new Date().toISOString() })
+      .update({ check_out: checkOutAt })
       .eq("id", id)
       .select()
       .single();
@@ -68,7 +70,7 @@ export async function PATCH(
         actorEmail: profile.email,
         action: "update",
         entity: "attendance",
-        comment: `Checked out for ${existing.date}`,
+        comment: `Checked out for ${existing.date}, ${formatDuration(existing.check_in, checkOutAt)}`,
       });
     }
 
@@ -105,8 +107,8 @@ export async function PATCH(
       action: "update",
       entity: "attendance",
       comment: isOwnRecord
-        ? `Updated own attendance record for ${existing.date}`
-        : `Updated ${existing.employee?.full_name ?? "an employee"}'s attendance record for ${existing.date}`,
+        ? `Updated own attendance record for ${existing.date}, ${formatDuration(nextCheckIn, nextCheckOut)}`
+        : `Updated ${existing.employee?.full_name ?? "an employee"}'s attendance record for ${existing.date}, ${formatDuration(nextCheckIn, nextCheckOut)}`,
     });
   }
 
