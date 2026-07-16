@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -17,19 +17,14 @@ export function SignupRequestsPanel({
   );
   const [error, setError] = useState<string | null>(null);
 
-  const [isHighlighted, setIsHighlighted] = useState(false);
-  const hasHighlighted = useRef(false);
+  const [isHighlighted, setIsHighlighted] = useState(() => initialRequests.length > 0);
 
   useEffect(() => {
-    if (hasHighlighted.current) return;
-    if (initialRequests.length === 0) return;
-
-    hasHighlighted.current = true;
-    setIsHighlighted(true);
+    if (!isHighlighted) return;
 
     const timeout = setTimeout(() => setIsHighlighted(false), 1600);
     return () => clearTimeout(timeout);
-  }, [initialRequests.length]);
+  }, [isHighlighted]);
 
   async function review(id: string, status: "approved" | "rejected") {
     setActingOn({ id, status });
