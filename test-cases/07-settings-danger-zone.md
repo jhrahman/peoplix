@@ -17,6 +17,24 @@ App URL: https://peoplix-hr.vercel.app/settings
 | 7 | Log in as a different role (Employee, HR, Admin) and open Settings | Each role in turn | All three roles can view and edit their own profile identically (including Department/Designation); no role-specific profile fields differ |
 | 7a | Resize the browser to a mobile width (e.g. 375px) while on Settings | Viewport resize | Department/Designation fields stack into a single column (from a two-column layout on wider screens); no overlapping content or horizontal scroll |
 
+## Profile photo
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 7h | Open Settings with no photo set | Account with `avatar_url` unset | "Profile photo" card sits beside "Your profile" (below it on narrow/mobile widths), showing a rounded initials placeholder and an "Upload photo" button |
+| 7i | Select a valid image under 1MB | A `.png`, `.jpg`/`.jpeg`, or `.webp` file under 1MB | A round-crop dialog opens showing the selected image with a zoom slider |
+| 7j | Attempt to select a file over 1MB | Any image file larger than 1MB | Selection is rejected with an error toast; no crop dialog opens |
+| 7k | Attempt to select a non-image file (or unsupported image type) | e.g. a `.pdf` or `.gif` | Selection is rejected with an error toast naming the accepted formats; no crop dialog opens |
+| 7l | In the crop dialog, drag to reposition and use the zoom slider, then click "Save photo" | Any valid image from 7i | Dialog closes; avatar updates to the cropped photo; success toast ("Profile photo updated."); button label switches to "Change photo" and a "Delete photo" option appears |
+| 7m | Cancel out of the crop dialog instead of saving | Click "Cancel" mid-crop | Dialog closes; no photo is uploaded; the previous avatar/placeholder is unchanged |
+| 7n | After a successful upload, check the navbar user menu and the Team Directory listing for this account | Same account | The new photo appears in both places (not just the Settings page) without a manual page refresh |
+| 7o | Click "Change photo" on an account that already has one set | Select a new valid image | New crop dialog opens; saving replaces the existing photo (same behavior as 7l) |
+| 7p | Click "Delete photo" on an account with a photo set | N/A | Button shows a spinner and "Deleting..." while in flight; on success, avatar reverts to the initials placeholder, "Delete photo" disappears, and a success toast appears ("Profile photo deleted.") |
+| 7q | Confirm the delete synced correctly | Same account, after 7p | Navbar and Team Directory both show the initials placeholder again without a manual refresh; refreshing the Settings page also shows no photo (persisted, not just local UI state) |
+| 7r | Check the Audit Log after uploading and after deleting a photo | See [`11-audit-log.md`](11-audit-log.md) | Two separate entries appear: "Updated profile photo" and "Removed profile photo" |
+| 7s | Log in as a different role (Employee, HR, Admin) | Each role in turn | Upload/change/delete all work identically for every role — profile photo is not gated by role |
+| 7t | Resize the browser to a mobile width (e.g. 375px) on Settings | Viewport resize | "Profile photo" card renders directly below "Your profile" (not pushed after Change password/other cards), full-width and centered, matching the rest of the mobile layout |
+
 ## Change password
 
 | # | Action | Test Data | Expected Result |

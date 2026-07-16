@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Mail, Phone, Search, X } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,7 +19,7 @@ import { CopyEmailButton } from "@/components/directory/copy-email-button";
 
 type DirectoryProfile = Pick<
   Profile,
-  "id" | "full_name" | "designation" | "department" | "email" | "phone"
+  "id" | "full_name" | "designation" | "department" | "email" | "phone" | "avatar_url"
 >;
 
 export function DirectoryList({ profiles }: { profiles: DirectoryProfile[] }) {
@@ -91,6 +91,7 @@ export function DirectoryList({ profiles }: { profiles: DirectoryProfile[] }) {
                   <TableCell>
                     <div className="flex items-center gap-2.5">
                       <Avatar size="sm">
+                        <AvatarImage src={profile.avatar_url ?? undefined} alt={profile.full_name} />
                         <AvatarFallback className="text-xs">
                           {getInitials(profile.full_name)}
                         </AvatarFallback>

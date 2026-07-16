@@ -49,7 +49,10 @@ Dashboard gets an Admin-only orange-gradient stat tile for the pending count.
    at account creation and is never editable afterward by anyone, including Admin/HR editing another
    employee's row. A small hardcoded allowlist (`lib/protected-employees.ts`) marks accounts that
    can never be deleted, even by Admin — checked server-side in the delete route, not just hidden
-   in the UI.
+   in the UI. Every role can also upload a profile photo from Settings (`profiles.avatar_url`) — see
+   the **Profile Photo Upload** note under §3/§6 for the crop/compression/storage pipeline — and the
+   resulting avatar renders anywhere a profile is shown (navbar, Team Directory), falling back to
+   initials when unset.
 3. **Leave management** — apply, approve/reject, balance tracking
    - Leave types: Casual, Sick, Annual (standard BD types)
 4. **Bangladesh holiday calendar** — seeded default holidays + Admin/HR can add/edit
@@ -82,9 +85,17 @@ Dashboard gets an Admin-only orange-gradient stat tile for the pending count.
 | designation | text | |
 | role | enum | admin, hr, employee |
 | joined_date | date | |
-| avatar_url | text | nullable |
+| avatar_url | text | nullable — public URL into the `avatars` Storage bucket, set via Settings (see below) |
 | manager_id | uuid | nullable, self-FK (reserved for future use) |
 | password_set_at | timestamptz | nullable — null until the employee's first successful password set; drives the Audit Log's "joined" action (§10) |
+
+**Profile photo storage:** a public Supabase Storage bucket, `avatars` (1MB file-size cap, PNG/JPEG/WEBP
+only), holds one object per user named `{user-id}.jpg`. Storage RLS policies mirror the ownership
+pattern used on tables — insert/update/delete require `auth.uid()` to match the filename, while select
+is public so avatars can render in the navbar and Team Directory without an authenticated request. On
+upload, the client crops the selection to a circle (`react-easy-crop`), renders it to a 400×400 canvas,
+and re-encodes as JPEG at decreasing quality until it's under ~150KB, before uploading — keeping storage
+usage predictable regardless of the source photo's size.
 
 ### `leave_requests`
 | Column | Type | Notes |
@@ -303,13 +314,19 @@ A `/audit-log` page, positioned right before Settings in the nav, visible to eve
 
 - **What's logged:** leave apply/self-edit/cancel/approve/reject, overtime log/self-edit/cancel/
   approve/reject, attendance check-in/checkout/override/delete, employee create/update/delete,
-  signup-request approve/reject, profile self-edit, password change, self-account deletion, and a
-  new employee **joining** (see below). Each entry records the actor's name/email (snapshotted at
-  write time, so it still reads correctly even after the profile is later edited or the account
-  deleted), a timestamp, an `action`
+  signup-request approve/reject, profile self-edit, profile photo upload/change/delete, password
+  change, self-account deletion, and a new employee **joining** (see below). Each entry records the
+  actor's name/email (snapshotted at write time, so it still reads correctly even after the profile
+  is later edited or the account deleted), a timestamp, an `action`
   (`create`/`update`/`delete`/`cancel`/`approve`/`reject`/`joined`), an `entity`, and a short
   plain-language comment (e.g. "Applied for casual leave (Jul 20 → Jul 22)", "Approved Jane Doe's
   overtime (3h)").
+- **Profile self-edit comments are field-specific:** `updateOwnProfile` diffs the submitted values
+  against the row's previous values and only names what actually changed — e.g. "Updated their
+  name", "Updated their mobile number", or "Updated their name and department" when more than one
+  field changes in the same save. Saving with no actual changes writes no entry at all. Photo
+  uploads/changes/deletes go through the separate `updateAvatarUrl` action and log their own
+  "Updated profile photo" / "Removed profile photo" comment.
 - **"Joined" action:** the invite/forgot-password flow (`/reset-password`, §5) is one single
   mechanism serving two different situations — a brand-new employee setting their password for the
   first time, and an existing employee who forgot theirs — and they need different audit entries.

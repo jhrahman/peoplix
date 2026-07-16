@@ -11,9 +11,11 @@ const getDirectoryProfiles = unstable_cache(
   async () => {
     const { data } = await createAdminClient()
       .from("profiles")
-      .select("id, full_name, designation, department, email, phone")
+      .select("id, full_name, designation, department, email, phone, avatar_url")
       .order("full_name")
-      .returns<Pick<Profile, "id" | "full_name" | "designation" | "department" | "email" | "phone">[]>();
+      .returns<
+        Pick<Profile, "id" | "full_name" | "designation" | "department" | "email" | "phone" | "avatar_url">[]
+      >();
     return data ?? [];
   },
   ["directory-profiles"],

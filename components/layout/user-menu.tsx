@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { LogOut } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -34,6 +34,7 @@ export function UserMenu({ profile }: { profile: Profile }) {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="gap-2 px-2" data-testid="user-menu-trigger">
             <Avatar className="h-7 w-7">
+              <AvatarImage src={profile.avatar_url ?? undefined} alt={profile.full_name} />
               <AvatarFallback className="text-xs">
                 {getInitials(profile.full_name)}
               </AvatarFallback>

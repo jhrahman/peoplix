@@ -13,7 +13,7 @@
 
 Peoplix — People management, simplified.
 
-A role-based HR management web app: team directory, leave management, overtime tracking, Bangladesh holiday calendar, and attendance check-in/out — built end-to-end on free-tier services, with a modern glassmorphism UI: an airy teal "light glass" theme and a vibrant emerald-teal "dark ash glass" theme (never dimmed, never violet).
+A complete role-based HR management platform: team directory, leave management, overtime tracking, a Bangladesh holiday calendar, and attendance check-in/out, wrapped in a polished glassmorphism UI — an airy teal "light glass" theme and a vibrant emerald-teal "dark ash glass" theme (never dimmed, never violet).
 
 Full project plan: [hr-app-plan.md](hr-app-plan.md).
 
@@ -26,14 +26,14 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 - **Role-based access (RBAC)** — `admin`, `hr`, `employee`, enforced by Postgres Row-Level Security *and* re-checked server-side in every API route (never trusted from the client alone).
 - **Dashboard** — at-a-glance stat tiles and charts for hours worked, overtime, leave balance, upcoming holidays, and account role, plus Admin/HR-only approval-queue counters (leave, overtime, and — Admin only — pending access requests).
 - **Employee management** — Admin/HR can add, edit, and remove employees; assign roles; department/designation fields. Adding an employee sends the same branded invite email as an approved access request. A small hardcoded allowlist of protected accounts can never be removed, even by Admin, re-checked server-side. A real-time client-side search box (name/email/department/designation) sits above the table, matching the Directory page's search UX.
-- **Team directory** — read-only, searchable (name/department/designation/email) profile listing visible to **every** role — unlike the Employees page, any employee can look up a colleague's contact details. One-click copy-to-clipboard on each email address, and an instant clear (✕) button on the search box.
+- **Team directory** — read-only, searchable (name/department/designation/email) profile listing visible to **every** role — unlike the Employees page, any employee can look up a colleague's contact details, complete with each person's profile photo (falling back to their initials). One-click copy-to-clipboard on each email address, and an instant clear (✕) button on the search box.
 - **Leave management** — apply for Casual/Sick/Annual leave, live day-count preview, Admin/HR approval queue, automatic balance deduction on approval, per-employee balance view, and self-service edit/cancel while a request is still pending (fix a typo without waiting on HR).
 - **Overtime tracking** — log overtime manually (date + hours in 0.5h steps, one entry per day), Admin-only approval (HR can view but not approve), self-service edit/cancel while still pending, a per-employee summary (pending/approved/rejected) and matching dashboard widgets.
 - **Holiday calendar** — shared company holiday list, recurring-holiday support, and a one-click "generate default Bangladesh public holidays for this year" recovery action available to any signed-in user.
 - **Attendance** — one-click check-in/out with all times shown in Bangladesh Standard Time (12-hour AM/PM, regardless of the viewer's own device timezone), real-time in-flight/success feedback on the check-in/out buttons, automatic duration calculation, and a self-service manual override/correction (e.g. fix an accidental early checkout) — no approval step required. Any role can delete their own **today's** record to re-check-in; past records can't be deleted by anyone, including Admin. History is filterable by date range (persisted in the URL, so it survives a refresh).
 - **Import / Export** — CSV and XLSX for Employees, Leave requests, and Holidays, with a downloadable template, row-by-row validation preview, and per-row import status.
-- **Audit Log** — a `/audit-log` page (sits right before Settings in the nav) records who did what: leave apply/edit/cancel/approve/reject, overtime log/edit/cancel/approve/reject, attendance check-in/out/edit/delete, employee create/update/delete, signup approve/reject, profile edits, password changes, account deletion, and a new employee **joining** (setting their password for the first time via the invite link) — each entry shows the employee's name, email, a Bangladesh-time (12-hour) timestamp, the action, and a short plain-language comment. A first-time password set logs as "Joined" ("someone@example.com has been registered to the app"); every subsequent password change — whether from Settings or a forgotten-password email link — logs as an ordinary password update instead, so it only shows up once per account. Every role can see their own history; only Admin can see everyone's, with a real-time name/email/comment search box. A simple from/to date filter (native date inputs, mutually clamped so an invalid range can't be picked) narrows the list, entirely client-side. Entries are kept for **10 days** (shown as a banner on the page) and then automatically deleted by a daily Vercel Cron job, to stay within Supabase's free-tier storage cap.
-- **Settings** — every role can self-edit their own Full name, Phone, Department, and Designation (Email is never editable), plus change their own password directly — no need to go through the forgot-password email flow just to update a password.
+- **Audit Log** — a `/audit-log` page (sits right before Settings in the nav) records who did what: leave apply/edit/cancel/approve/reject, overtime log/edit/cancel/approve/reject, attendance check-in/out/edit/delete, employee create/update/delete, signup approve/reject, profile edits, password changes, account deletion, and a new employee **joining** (setting their password for the first time via the invite link) — each entry shows the employee's name, email, a Bangladesh-time (12-hour) timestamp, the action, and a short plain-language comment. Profile edits are logged field-by-field rather than a generic "updated profile" — saving just the department shows "Updated their department", changing name and mobile number together shows "Updated their name and mobile number", and no entry is written at all if Save was clicked with nothing actually changed; uploading, changing, or deleting a profile photo logs its own entry too. A first-time password set logs as "Joined" ("someone@example.com has been registered to the app"); every subsequent password change — whether from Settings or a forgotten-password email link — logs as an ordinary password update instead, so it only shows up once per account. Every role can see their own history; only Admin can see everyone's, with a real-time name/email/comment search box. A simple from/to date filter (native date inputs, mutually clamped so an invalid range can't be picked) narrows the list, entirely client-side. Entries are retained for **10 days** (shown as a banner on the page) and cleaned up automatically by a daily Vercel Cron job, keeping the audit trail lean and fast to query.
+- **Settings** — every role can self-edit their own Full name, Phone, Department, and Designation (Email is never editable), upload a profile photo with an interactive round-crop step and automatic client-side compression before it's stored in Supabase Storage (with a one-click delete back to initials), and change their own password directly — no need to go through the forgot-password email flow just to update a password.
 - **Danger Zone** — restricted to a single designated System Admin account (not just any Admin role holder), type-to-confirm wipe of all leave/holiday/attendance/overtime data; employee accounts are never touched. Fully hidden (not merely disabled) for everyone else, including other Admins, both in the UI and re-checked server-side. Any Admin (not just the System Admin) can separately clear all Audit Log history from Settings, since that's just clearing history rather than operational data.
 - **Delete Account** — every role can permanently delete their own account from Settings, behind a type-to-confirm dialog with a live "Deleting Account..." state; deletes the Supabase Auth user (cascading to their profile and all of their leave/attendance/overtime records) and redirects to `/login`.
 - **Polish** — page-transition loading states, spinner feedback on in-flight approve/reject actions, a proper pointer cursor on every button, responsive/mobile layout, empty states everywhere, `data-testid` attributes on every interactive element for automated testing. In-flight button states (Cancel, Check In/Out) stay showing "…ing" text until the server data is actually confirmed refreshed rather than a fixed timeout, so they never flash back to the idle label right before the UI updates. On mobile, the top navbar is sticky (with a fully opaque background so scrolled content can't tint it) so the menu, theme toggle, and user menu stay reachable without scrolling back up; desktop keeps the original static, translucent header.
@@ -45,7 +45,7 @@ Full project plan: [hr-app-plan.md](hr-app-plan.md).
 |---|---|
 | Framework | Next.js 16 (App Router) + TypeScript, React 19 |
 | Backend | Next.js API Routes — no separate server |
-| Database & Auth | Supabase (Postgres + Auth), free tier, Row-Level Security on every table |
+| Database, Auth & Storage | Supabase (Postgres + Auth + Storage), Row-Level Security on every table |
 | Styling | Tailwind CSS v4 + shadcn/ui, glassmorphism design system, `next-themes` light/dark |
 | Import/Export | `papaparse` (CSV) + `exceljs` (XLSX) |
 | Hosting | Vercel (native GitHub integration — auto-deploy on push to `main`) |
@@ -68,7 +68,7 @@ app/
     holidays/                  Holiday calendar
     attendance/                Check-in/out, history, overrides
     audit-log/                 Who-did-what history (all roles, Admin-only cross-employee search)
-    settings/                  Profile self-edit (name/phone/department/designation), change password, Danger Zone (System Admin only), Audit Log Cleanup (Admin), Delete Account
+    settings/                  Profile self-edit (name/phone/department/designation) + photo upload, change password, Danger Zone (System Admin only), Audit Log Cleanup (Admin), Delete Account
   api/                      REST endpoints, one resource per folder
     employees/, leave/, holidays/, attendance/, overtime/, admin/clear-database/, admin/clear-audit-logs/,
     signup-requests/, account/, auth/forgot-password/, settings/password-changed/, cron/audit-log-cleanup/
@@ -84,7 +84,7 @@ lib/
   actions/       Next.js Server Actions
   *.ts           leave.ts, attendance.ts, overtime.ts, bd-holidays.ts, import-export.ts, datetime.ts (shared Dhaka-time helpers), audit.ts (audit log writer + retention constant) — shared domain logic
 supabase/
-  migrations/    Numbered SQL migrations (schema, RLS policies, seed data, backfills)
+  migrations/    Numbered SQL migrations (schema, RLS policies, storage buckets, seed data, backfills)
 test-cases/      Manual QA test cases per page (Action / Test Data / Expected Result)
 api-endpoints/   API reference for manual/API-client testing
 vercel.json      Vercel Cron config (Audit Log retention cleanup)
@@ -165,7 +165,7 @@ and both are structured so they can be turned directly into an automated suite (
   - [`04-leave.md`](test-cases/04-leave.md) — apply, balances, approvals, import/export
   - [`05-holidays.md`](test-cases/05-holidays.md) — CRUD, default BD holiday seeding, import/export
   - [`06-attendance.md`](test-cases/06-attendance.md) — check-in/out, manual overrides, team view, Bangladesh time format
-  - [`07-settings-danger-zone.md`](test-cases/07-settings-danger-zone.md) — profile edit, Danger Zone RBAC + confirmation flow, Delete Account confirmation + cascade cleanup
+  - [`07-settings-danger-zone.md`](test-cases/07-settings-danger-zone.md) — profile edit, profile photo upload/crop/delete, Danger Zone RBAC + confirmation flow, Delete Account confirmation + cascade cleanup
   - [`08-overtime.md`](test-cases/08-overtime.md) — logging, validation, Admin-only approvals, dashboard widgets
   - [`09-directory.md`](test-cases/09-directory.md) — all-roles visibility, read-only listing, search
   - [`10-signup-requests.md`](test-cases/10-signup-requests.md) — public request form, duplicate handling, Admin-only approve/reject, resulting invite email

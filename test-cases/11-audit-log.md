@@ -71,7 +71,11 @@ right action label, and a comment that plainly describes what happened.
 | 33 | Admin/HR edits an employee's profile | Actor = the editor; action "Updated"; comment includes the employee's (possibly new) name |
 | 34 | Admin/HR deletes an employee | Actor = the deleter; action "Deleted"; comment includes the deleted employee's name/email |
 | 35 | Admin approves/rejects a sign-up request | Actor = the Admin; action "Approved"/"Rejected"; comment includes the requester's name/email |
-| 36 | Self-edit own profile in Settings | Actor = self; action "Updated"; comment says profile was updated |
+| 36 | Self-edit own profile in Settings, changing a single field | e.g. change only Department | Actor = self; action "Updated"; comment names the specific field, e.g. "Updated their department" |
+| 36a | Self-edit multiple profile fields in one save | e.g. change Full name and Mobile together | Comment names all changed fields, e.g. "Updated their name and mobile number" |
+| 36b | Click "Save changes" on the profile form without changing any field | No edits made | No new Audit Log entry is written for this save |
+| 36c | Upload or change a profile photo from Settings | Any valid image | Actor = self; action "Updated"; comment reads "Updated profile photo" |
+| 36d | Delete a profile photo from Settings | Account with an existing photo | Actor = self; action "Updated"; comment reads "Removed profile photo" |
 | 37 | Change own password in Settings | Actor = self; action "Updated"; comment says password was changed |
 | 38 | Delete own account | Actor = self; entry is visible (check as Admin, since the account/actor no longer exists to view it as) — the actor's name/email still display correctly even after the account is gone |
 | 38a | A newly invited/approved employee opens the invite link and sets their password for the very first time | New account, first visit to `/reset-password` | Actor = the new employee; action **"Joined"**; comment reads exactly `"<their email> has been registered to the app"` |

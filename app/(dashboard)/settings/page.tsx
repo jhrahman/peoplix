@@ -2,6 +2,7 @@ import { getCurrentProfile } from "@/lib/auth/get-profile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { ChangePasswordForm } from "@/components/settings/change-password-form";
+import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { DeleteAuditLogs } from "@/components/settings/delete-audit-logs";
 import { DeleteAccount } from "@/components/settings/delete-account";
@@ -13,8 +14,8 @@ export default async function SettingsPage() {
   if (!profile) return null;
 
   return (
-    <div className="space-y-6">
-      <Card className="mx-auto max-w-lg">
+    <div className="mx-auto grid max-w-3xl gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Your profile</CardTitle>
         </CardHeader>
@@ -23,28 +24,31 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="mx-auto max-w-lg">
+      <Card className="w-full lg:self-start">
         <CardHeader>
-          <CardTitle>Change password</CardTitle>
+          <CardTitle>Profile photo</CardTitle>
         </CardHeader>
         <CardContent>
-          <ChangePasswordForm />
+          <AvatarUpload profile={profile} />
         </CardContent>
       </Card>
 
-      {profile.role === "admin" && (
-        <div className="mx-auto max-w-lg">
-          <DeleteAuditLogs />
-        </div>
-      )}
+      <div className="space-y-6 lg:col-start-1">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Change password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChangePasswordForm />
+          </CardContent>
+        </Card>
 
-      {isSystemAdmin(profile.email) && (
-        <div className="mx-auto max-w-lg">
-          <DangerZone />
-        </div>
-      )}
+        {profile.role === "admin" && <DeleteAuditLogs />}
 
-      <DeleteAccount />
+        {isSystemAdmin(profile.email) && <DangerZone />}
+
+        <DeleteAccount />
+      </div>
     </div>
   );
 }
