@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { SignupRequest } from "@/lib/types";
 
 export function SignupRequestsPanel({
@@ -15,6 +16,20 @@ export function SignupRequestsPanel({
     null,
   );
   const [error, setError] = useState<string | null>(null);
+
+  const [isHighlighted, setIsHighlighted] = useState(false);
+  const hasHighlighted = useRef(false);
+
+  useEffect(() => {
+    if (hasHighlighted.current) return;
+    if (initialRequests.length === 0) return;
+
+    hasHighlighted.current = true;
+    setIsHighlighted(true);
+
+    const timeout = setTimeout(() => setIsHighlighted(false), 1600);
+    return () => clearTimeout(timeout);
+  }, [initialRequests.length]);
 
   async function review(id: string, status: "approved" | "rejected") {
     setActingOn({ id, status });
@@ -42,7 +57,7 @@ export function SignupRequestsPanel({
   }
 
   return (
-    <Card>
+    <Card className={cn(isHighlighted && "highlight-flash")}>
       <CardHeader>
         <CardTitle>Pending Sign Up Requests</CardTitle>
       </CardHeader>

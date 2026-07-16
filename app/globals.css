@@ -161,6 +161,13 @@
     @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_1px_0_0_rgba(255,255,255,0.4)_inset,0_16px_40px_-12px_rgba(0,0,0,0.3)] dark:hover:shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset,0_16px_40px_-8px_rgba(0,0,0,0.7)];
   }
 
+  /* Draws attention to the Pending Sign Up Requests card when an admin lands
+     here from the dashboard's Access requests tile - a double pulse glowing
+     outward from the card's edges, then settling back to normal. */
+  .highlight-flash {
+    animation: highlight-flash 1.6s ease-in-out 1;
+  }
+
   /* Soft, staggered reveal for the signup success checkmark: badge settles
      in first, then the ring pulses out, then the check strokes itself in. */
   .success-check-badge {
@@ -174,6 +181,13 @@
     stroke-dashoffset: 20;
     animation: success-check-draw 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.65s forwards;
   }
+}
+
+@keyframes highlight-flash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
+  15% { box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.55), 0 0 32px 10px rgba(234, 88, 12, 0.35); }
+  50% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); }
+  65% { box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.55), 0 0 32px 10px rgba(234, 88, 12, 0.35); }
 }
 
 @keyframes success-check-pop {

@@ -38,6 +38,14 @@ here), at which point the account is created via the Supabase Admin API
 exactly as with Admin-created employees (see §5). Approve/Reject show a live
 "Approving…"/"Rejecting…" state while the request is in flight, and the
 Dashboard gets an Admin-only orange-gradient stat tile for the pending count.
+That tile is a real link straight to `/employees` whenever the count is above
+zero (a plain, unclickable tile at zero — `StatTile`'s optional `href` prop
+drives this generically, not special-cased to this one tile), and the
+**Pending Sign Up Requests** card itself plays a one-time double-pulse orange
+`highlight-flash` glow on mount whenever it has at least one pending row —
+regardless of how the admin arrived at the Employees page (dashboard tile,
+sidebar nav, direct URL), since the trigger is "does this page have pending
+requests right now," not "did you come from the dashboard."
 
 ---
 

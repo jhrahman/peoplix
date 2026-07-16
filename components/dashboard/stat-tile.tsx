@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -9,6 +10,7 @@ export function StatTile({
   sublabel,
   accent = false,
   tone = "default",
+  href,
 }: {
   icon: LucideIcon;
   label: string;
@@ -16,14 +18,16 @@ export function StatTile({
   sublabel?: string;
   accent?: boolean;
   tone?: "default" | "orange";
+  href?: string;
 }) {
   const slug = label.trim().toLowerCase().replace(/\s+/g, "-");
 
-  return (
+  const card = (
     <Card
       className={cn(
         "glass-interactive relative overflow-hidden",
         tone === "orange" && "border-orange-500/30",
+        href && "cursor-pointer",
       )}
       data-testid={`stat-tile-${slug}`}
     >
@@ -52,5 +56,13 @@ export function StatTile({
         </div>
       </CardContent>
     </Card>
+  );
+
+  if (!href) return card;
+
+  return (
+    <Link href={href} className="block" data-testid={`stat-tile-${slug}-link`}>
+      {card}
+    </Link>
   );
 }

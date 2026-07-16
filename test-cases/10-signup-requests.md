@@ -29,6 +29,15 @@ acting on it is restricted to Admin (not HR, unlike most Admin/HR-gated resource
 | 12 | Log in as Admin with zero pending requests | Valid Admin account | Panel shows "No pending requests." instead of an empty list |
 | 13 | Attempt to call `GET /api/signup-requests` directly as a non-Admin (e.g. HR session or dev tools) | HR or Employee session | Request is rejected (`401`/`403`), independent of the panel being hidden in the UI |
 
+## Highlight flash on arrival
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 13a | Navigate to `/employees` (any route: dashboard "Access requests" tile, sidebar link, direct URL/refresh) while 1+ requests are pending | Valid Admin account, 1+ pending `signup_requests` | The "Pending Sign Up Requests" card gives a brief double-pulse orange glow radiating from its edges on load, then settles back to its normal appearance after ~1.6s |
+| 13b | Navigate to `/employees` with zero pending requests | Valid Admin account, no pending `signup_requests` rows | No flash occurs — the card just reads "No pending requests." as normal |
+| 13c | While already on `/employees` with the flash finished, approve or reject a request without leaving the page | Any pending request | No flash replays — it only fires once, on page load/navigation, not on every state change |
+| 13d | Navigate away from `/employees` and back again (still 1+ pending requests) | e.g. Dashboard → Employees → Dashboard → Employees | The flash plays again on each fresh navigation to the page, not just the first time ever |
+
 ## Approve
 
 | # | Action | Test Data | Expected Result |

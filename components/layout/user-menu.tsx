@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { LogOut, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,10 +45,25 @@ export function UserMenu({ profile }: { profile: Profile }) {
             </span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel className="capitalize">{profile.role}</DropdownMenuLabel>
+        <DropdownMenuContent align="end" className="w-56">
+          <div className="px-1.5 py-1">
+            <p className="truncate text-sm font-medium">{profile.full_name}</p>
+            <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>
+            Role - <span className="capitalize">{profile.role}</span>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild data-testid="your-profile-link">
+            <Link href="/settings">
+              <User className="h-4 w-4" />
+              Your Profile
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
+            variant="destructive"
             onSelect={(e) => {
               e.preventDefault();
               handleSignOut();

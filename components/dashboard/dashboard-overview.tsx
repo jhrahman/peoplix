@@ -140,6 +140,7 @@ export async function DashboardOverview({
             value={String(pendingSignupCount ?? 0)}
             sublabel="Sign-up requests pending"
             tone="orange"
+            href={pendingSignupCount && pendingSignupCount > 0 ? "/employees" : undefined}
           />
         )}
         <StatTile
