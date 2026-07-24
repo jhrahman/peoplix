@@ -25,9 +25,13 @@ export function CheckInOutCard({ today }: { today: Attendance | null }) {
       return;
     }
 
-    // Leave checkingIn===true on success: this whole branch unmounts once
-    // router.refresh() delivers `today.check_in`, so there's no stale render
-    // in between to flash "Check In" back before the row disappears.
+    // Leave checkingIn===true on success: this component is remounted (see
+    // the `key` on its usage in app/(dashboard)/attendance/page.tsx) once
+    // router.refresh() delivers a `today` with a new id, so the next render
+    // starts completely fresh - no stale render in between to flash "Check
+    // In" back before the "checked in" view appears, and no leftover
+    // checkingIn/checkingOut state if today's record is later deleted and
+    // this goes back to the "not checked in" view.
     router.refresh();
   }
 

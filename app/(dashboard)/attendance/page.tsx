@@ -53,7 +53,10 @@ export default async function AttendancePage({
 
   return (
     <div className="space-y-6">
-      <CheckInOutCard today={todayRecord ?? null} />
+      {/* Keyed on the record's id (or "none") so a fresh check-in, or a delete that reverts
+          today back to null, remounts this with clean state instead of carrying over a stale
+          checkingIn/checkingOut flag from before - see check-in-out-card.tsx. */}
+      <CheckInOutCard key={todayRecord?.id ?? "none"} today={todayRecord ?? null} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
