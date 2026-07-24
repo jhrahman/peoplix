@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { defaultBdHolidaysForYear } from "@/lib/bd-holidays";
@@ -44,6 +45,8 @@ export async function POST(request: Request) {
     if (insertError) {
       return NextResponse.json({ error: insertError.message }, { status: 400 });
     }
+
+    revalidateTag("holidays-list", { expire: 0 });
   }
 
   return NextResponse.json({

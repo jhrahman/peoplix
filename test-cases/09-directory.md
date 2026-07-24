@@ -23,6 +23,9 @@ Access: Every role (unlike the Employees page, which is Admin/HR only).
 | 9 | View the directory when the company has no other employees yet | Single-employee database (e.g. fresh install) | Table lists the one existing profile; no error |
 | 9a | Click the copy icon next to an employee's email | Any row | Icon briefly swaps to a checkmark and a "Copied!" tooltip; the email address is on the clipboard (paste it somewhere to confirm) |
 | 9b | Wait ~1.5s after copying | N/A | Icon reverts from checkmark back to the copy icon automatically |
+| 9c | View the row for an employee with an **approved** leave request covering today | Employee on approved leave today | A small 🌴 appears next to their name; hovering it shows an "On leave today" tooltip |
+| 9d | View the row for an employee with only a **pending** leave request covering today | Employee with a pending (not yet reviewed) request for today | No 🌴 shown — only approved leave triggers the indicator |
+| 9e | View the row for an employee with an approved leave request for a different date range | Approved leave that doesn't cover today | No 🌴 shown |
 
 ## Search
 

@@ -2,9 +2,10 @@ import { CalendarDays, Clock, PartyPopper, Timer, UserPlus } from "lucide-react"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ensureLeaveBalance } from "@/lib/leave";
+import { getHolidaysList } from "@/lib/holidays";
 import { hoursWorked } from "@/lib/attendance";
 import { cn } from "@/lib/utils";
-import type { Attendance, Holiday, OvertimeRequest, Profile } from "@/lib/types";
+import type { Attendance, OvertimeRequest, Profile } from "@/lib/types";
 import { StatTile } from "@/components/dashboard/stat-tile";
 import { LeaveBalanceMeters } from "@/components/dashboard/leave-balance-meters";
 import { RoleInfoCard } from "@/components/dashboard/role-info-card";
@@ -51,7 +52,7 @@ export async function DashboardOverview({
 
   const [
     { data: weekAttendance },
-    { data: upcomingHolidays },
+    allHolidays,
     balance,
     { data: myOvertime },
     { count: pendingSignupCount },
@@ -62,13 +63,7 @@ export async function DashboardOverview({
       .eq("employee_id", userId)
       .gte("date", weekStartIso)
       .returns<Attendance[]>(),
-    supabase
-      .from("holidays")
-      .select("*")
-      .gte("date", todayIso)
-      .order("date")
-      .limit(3)
-      .returns<Holiday[]>(),
+    getHolidaysList(),
     ensureLeaveBalance(createAdminClient(), userId, year),
     supabase
       .from("overtime_requests")
@@ -82,6 +77,8 @@ export async function DashboardOverview({
           .eq("status", "pending")
       : Promise.resolve({ count: 0 }),
   ]);
+
+  const upcomingHolidays = allHolidays.filter((h) => h.date >= todayIso).slice(0, 3);
 
   const pendingOvertimeOwn = (myOvertime ?? []).filter((o) => o.status === "pending").length;
   const approvedOvertimeHoursThisMonth = (myOvertime ?? [])

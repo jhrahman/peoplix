@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth/require-role";
+import { getHolidaysList } from "@/lib/holidays";
 
 export async function GET() {
   const supabase = await createClient();
@@ -12,14 +14,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase
-    .from("holidays")
-    .select("*")
-    .order("date");
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  const data = await getHolidaysList();
 
   return NextResponse.json({ data });
 }
@@ -44,6 +39,8 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  revalidateTag("holidays-list", { expire: 0 });
 
   return NextResponse.json({ data }, { status: 201 });
 }

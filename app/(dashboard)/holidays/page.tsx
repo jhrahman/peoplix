@@ -1,21 +1,17 @@
 import { getCurrentProfile } from "@/lib/auth/get-profile";
+import { getHolidaysList } from "@/lib/holidays";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Holiday } from "@/lib/types";
 import { HolidaysList } from "@/components/holidays/holidays-list";
 import { HolidayFormDialog } from "@/components/holidays/holiday-form-dialog";
 import { HolidaysImportExport } from "@/components/holidays/holidays-import-export";
 import { SeedDefaultHolidaysButton } from "@/components/holidays/seed-default-holidays-button";
 
 export default async function HolidaysPage() {
-  const { supabase, profile } = await getCurrentProfile();
+  const { profile } = await getCurrentProfile();
 
   const isStaff = Boolean(profile && ["admin", "hr"].includes(profile.role));
 
-  const { data: holidays } = await supabase
-    .from("holidays")
-    .select("*")
-    .order("date")
-    .returns<Holiday[]>();
+  const holidays = await getHolidaysList();
 
   return (
     <Card>
@@ -25,14 +21,14 @@ export default async function HolidaysPage() {
           <SeedDefaultHolidaysButton />
           {isStaff && (
             <>
-              <HolidaysImportExport holidays={holidays ?? []} />
+              <HolidaysImportExport holidays={holidays} />
               <HolidayFormDialog />
             </>
           )}
         </div>
       </CardHeader>
       <CardContent>
-        <HolidaysList holidays={holidays ?? []} isStaff={isStaff} />
+        <HolidaysList holidays={holidays} isStaff={isStaff} />
       </CardContent>
     </Card>
   );

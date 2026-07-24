@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isProtectedEmployee } from "@/lib/protected-employees";
+import { invalidate } from "@/lib/cache/redis";
 import { logAudit } from "@/lib/audit";
 
 export async function GET(
@@ -49,6 +50,7 @@ export async function PATCH(
   }
 
   revalidateTag("directory-profiles", { expire: 0 });
+  await invalidate(`profile:${id}`);
 
   await logAudit({
     actorId: auth.profile.id,
@@ -99,6 +101,7 @@ export async function DELETE(
   }
 
   revalidateTag("directory-profiles", { expire: 0 });
+  await invalidate(`profile:${id}`);
 
   await logAudit({
     actorId: auth.profile.id,

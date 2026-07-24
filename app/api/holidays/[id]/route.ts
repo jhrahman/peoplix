@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireRole } from "@/lib/auth/require-role";
 
 export async function PATCH(
@@ -23,6 +24,8 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  revalidateTag("holidays-list", { expire: 0 });
+
   return NextResponse.json({ data });
 }
 
@@ -39,6 +42,8 @@ export async function DELETE(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  revalidateTag("holidays-list", { expire: 0 });
 
   return NextResponse.json({ data: { id } });
 }

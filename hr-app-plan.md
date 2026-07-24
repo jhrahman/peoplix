@@ -73,6 +73,8 @@ requests right now," not "did you come from the dashboard."
 8. **Team directory** *(ad-hoc, post-v1)* — read-only, searchable profile listing visible to
    every role (name, designation, department, email/phone); no editing. Requires one additional
    `profiles` SELECT policy so non-staff can read everyone's row (write access unaffected).
+   Also shows a small 🌴 "on leave today" indicator next to anyone with an **approved** leave
+   request covering the current day (pending requests don't count) — see §16.
 9. **Audit Log** *(ad-hoc, post-v1)* — who-did-what history for leave/overtime/attendance/employee/
    signup-request/profile/password/account actions. Every role sees their own entries; Admin only
    sees everyone's. 10-day retention (auto-deleted by a daily cron), to stay within Supabase's
@@ -124,9 +126,14 @@ usage predictable regardless of the source photo's size.
 | id | uuid | PK |
 | employee_id | uuid | FK → profiles |
 | year | int | |
-| casual_total / casual_used | int | |
-| sick_total / sick_used | int | |
-| annual_total / annual_used | int | |
+| casual_total / casual_used | int | `CHECK (casual_used >= 0 AND casual_used <= casual_total)` |
+| sick_total / sick_used | int | `CHECK (sick_used >= 0 AND sick_used <= sick_total)` |
+| annual_total / annual_used | int | `CHECK (annual_used >= 0 AND annual_used <= annual_total)` |
+
+The `CHECK` constraints (`0012_leave_balance_caps.sql`) are a second line of defense — the API
+already refuses to create or approve a request that would exceed the remaining balance, but a
+plain, unbounded integer column had let a run of approvals push `*_used` well past `*_total` in
+practice, so the invariant is now enforced at the database level too, not just in application code.
 
 ### `holidays`
 | Column | Type | Notes |
@@ -309,6 +316,17 @@ A **Settings → Danger Zone** section with a "Clear Database" button.
   the hidden UI is a UX nicety, not the actual security boundary.
 - **Confirmation flow:** clicking opens a confirm dialog requiring the admin to type a confirmation phrase (`DELETE ALL DATA`) before the action fires, to prevent accidental clicks.
 - **Scope:** truncates `leave_requests`, `leave_balances`, `holidays`, `attendance`, and `overtime_requests`. `profiles` and Supabase Auth users are never touched — no accounts are affected.
+- **Uses the service-role client, not the caller's session.** This table list includes `attendance`,
+  whose RLS delete policy deliberately only allows deleting your own **today's** row (history can't
+  be deleted by anyone, including Admin — see §5 module notes). Running the wipe through the
+  ordinary session-scoped client meant that policy silently applied here too: the delete succeeded
+  but only ever touched a sliver of rows, leaving other employees' attendance history behind with
+  no error to indicate anything had gone wrong. The service-role client bypasses that, since the
+  actual security boundary for this action is the System Admin gate above it, not RLS.
+- **Re-seeds `leave_balances` afterward.** Wiping that table used to leave it empty until each
+  employee happened to revisit `/leave` (which lazily creates their own balance row). Now the route
+  inserts a fresh default row for every remaining employee immediately after the wipe, so the
+  admin's "All balances" view is clean and fully populated right away.
 - **Purpose:** since this is a personal/demo project on Supabase's free 500MB tier, this gives an easy way to reset all seeded/test data without needing to touch the Supabase dashboard directly.
 - **Separately**, any Admin (not just the System Admin) can clear all **Audit Log** history from the
   same Settings page — a lighter-weight action since it's only clearing history, not operational
@@ -415,6 +433,7 @@ Both are low-cost additions that pay off most on a project like this, where seve
 - **Supabase Free plan:** free forever, no credit card, includes Postgres + Auth + REST API
   - Limits: 500MB database, 50,000 MAU, 1GB file storage — generous for this use case
   - Free projects auto-pause after 7 days of inactivity — mitigate with occasional logins or a scheduled GitHub Action ping if needed
+- **Upstash Redis free plan:** free, no credit card, 500K commands/month, 256MB — see §16
 
 ---
 
@@ -424,3 +443,39 @@ Both are low-cost additions that pay off most on a project like this, where seve
 - Full org-chart hierarchy / manager tree UI
 - GPS/photo-based attendance verification
 - Custom/admin-configurable leave types
+
+---
+
+## 16. Caching & Rate Limiting (Redis)
+Added once the app started targeting ~100-120 concurrent users, to keep pages fast and stop the
+free-tier Supabase project from taking repeated hits for the same data.
+
+- **Provider:** Upstash Redis (free tier — see §14), via `@upstash/redis`. It's a REST-based
+  client, so it works fine from Vercel's serverless functions without holding a persistent
+  connection.
+- **Never a hard dependency.** `lib/cache/redis.ts` returns `undefined` if
+  `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` aren't set, and every read/write is wrapped
+  in a try/catch that falls back to a live Supabase query on any error. The app behaves
+  identically with Redis fully unavailable — it's purely a speed optimization, not a feature.
+- **What's cached:**
+  - The caller's own `profiles` row (`getProfileById` in `lib/auth/get-profile.ts`) — used by
+    nearly every page and API route (`getCurrentProfile`, `requireRole`, attendance/leave/overtime
+    routes), 60s TTL, invalidated on every profile write (self-edit, avatar change, Admin edit or
+    delete of another employee).
+  - Holidays list — 300s TTL, via Next's own `unstable_cache`/`revalidateTag` (same mechanism
+    already used for the Directory's profile list), not Redis, since Vercel's Data Cache already
+    gives this for free and there was no reason to add a second cache for the same shape of data.
+- **What's deliberately not cached:** attendance, leave, and overtime data — these are mutated
+  constantly and read for correctness (e.g. "did I already check in today"), so staleness would
+  cost more than the caching would save. Same reasoning for the Directory's "on leave today"
+  indicator (§2) — it's intentionally uncached, since a stale approval status would just be wrong,
+  not slow.
+- **Rate limiting:** `@upstash/ratelimit`, sliding window, 10 requests per 10 seconds per employee,
+  applied to the heaviest write endpoints — attendance check-in, leave create, overtime create.
+  Returns a `429` under burst load instead of letting a spike of concurrent users hammer Supabase's
+  free-tier Postgres/Auth API directly. Same fail-open behavior as the cache: no Redis configured
+  means no rate limiting, never a blocked request.
+- **Why no direct Postgres connection pooling:** the app talks to Supabase exclusively through
+  `@supabase/supabase-js` (PostgREST over HTTPS), never a raw `pg`/`postgres` driver, so there's no
+  server-held connection pool in this codebase to configure — that concern lives entirely on
+  Supabase's side.

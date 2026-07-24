@@ -68,8 +68,9 @@ The Danger Zone is restricted to a single, hardcoded **System Admin** account
 | 14 | Type an incorrect confirmation phrase | Input: "delete all data" (wrong case) or "DELETE" (incomplete) | Action button remains disabled; phrase must match exactly |
 | 15 | Type the exact required phrase "DELETE ALL DATA" | Input: `DELETE ALL DATA` | Action button becomes enabled |
 | 16 | Click "Cancel" instead of confirming | N/A | Dialog closes; no data is deleted; confirmation input resets |
-| 17 | Confirm the clear-database action with the correct phrase | Confirm click | All leave requests, leave balances, holidays, attendance, and overtime records are deleted; Employee/HR/Admin accounts and profiles remain fully intact and able to log in |
-| 18 | After clearing, revisit the Dashboard, Leave, Holidays, Attendance, and Overtime pages | N/A | Each page shows correct empty states (no stale data, no errors) rather than leftover cached records |
+| 17 | Confirm the clear-database action with the correct phrase | Confirm click | All leave requests, leave balances, holidays, attendance, and overtime records are deleted — including attendance history belonging to **other** employees, not just the System Admin's own — accounts and profiles remain fully intact and able to log in |
+| 18 | After clearing, revisit the Dashboard, Leave, Holidays, Attendance, and Overtime pages | N/A | Each page shows correct empty states for holidays/attendance/overtime (no stale data, no errors); the Leave page's "All balances" table shows every current employee with a fresh 10/14/15 balance immediately, not an empty table |
+| 18a | Before clearing, note an attendance history entry belonging to an employee other than the System Admin | e.g. another employee's past check-in/out row | After confirming Clear Database, that row is gone too — not just the System Admin's own **today's** row (attendance's normal delete rule only allows deleting your own today's row, but this action is exempt from that since it uses a service-role bypass) |
 | 19 | After clearing, use "Generate default BD holidays" on the Holidays page to recover | N/A | Default holiday set is restored successfully |
 | 20 | Trigger "Clear Database" a second time immediately after a successful clear | Repeat steps 12–17 | Operation completes without error even with already-empty tables (idempotent) |
 

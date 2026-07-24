@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { invalidate } from "@/lib/cache/redis";
 import { logAudit } from "@/lib/audit";
 
 const PROFILE_FIELD_LABELS = {
@@ -75,6 +76,7 @@ export async function updateOwnProfile(formData: FormData) {
 
   revalidatePath("/settings");
   revalidatePath("/");
+  await invalidate(`profile:${user.id}`);
 }
 
 export async function updateAvatarUrl(avatarUrl: string | null) {
@@ -110,4 +112,5 @@ export async function updateAvatarUrl(avatarUrl: string | null) {
   revalidatePath("/settings");
   revalidatePath("/");
   revalidateTag("directory-profiles", { expire: 0 });
+  await invalidate(`profile:${user.id}`);
 }

@@ -25,8 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { LeaveRequestSummary, LeaveType } from "@/lib/types";
-import { leaveDays } from "@/lib/leave";
+import type { LeaveBalance, LeaveRequestSummary, LeaveType } from "@/lib/types";
+import { leaveDays, LEAVE_TYPE_LABELS, remainingLeaveDays } from "@/lib/leave";
 
 // Parsed as local midnight (not UTC) so the calendar's day-of-week checks
 // line up with what the user sees, regardless of browser timezone.
@@ -39,7 +39,13 @@ function isWeekend(date: Date) {
   return day === 0 || day === 6;
 }
 
-export function ApplyLeaveDialog({ request }: { request?: LeaveRequestSummary }) {
+export function ApplyLeaveDialog({
+  request,
+  balance,
+}: {
+  request?: LeaveRequestSummary;
+  balance?: LeaveBalance;
+}) {
   const router = useRouter();
   const isEdit = Boolean(request);
   const [open, setOpen] = useState(false);
@@ -56,6 +62,17 @@ export function ApplyLeaveDialog({ request }: { request?: LeaveRequestSummary })
   const days = endDate && startDate && endDate >= startDate
     ? leaveDays(startDate, endDate)
     : null;
+
+  const remaining = balance ? remainingLeaveDays(balance, leaveType) : null;
+  const typeLabel = LEAVE_TYPE_LABELS[leaveType];
+  const balanceWarning =
+    remaining === null
+      ? null
+      : remaining <= 0
+        ? `No ${typeLabel} leave left for ${balance!.year}.`
+        : days !== null && days > remaining
+          ? `Only ${remaining} day(s) of ${typeLabel} leave left — reduce the date range.`
+          : null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -214,6 +231,14 @@ export function ApplyLeaveDialog({ request }: { request?: LeaveRequestSummary })
           {days !== null && (
             <p className="text-sm text-muted-foreground">
               {days} {days === 1 ? "day" : "days"} of leave
+              {remaining !== null && !balanceWarning && (
+                <span> · {remaining} {typeLabel.toLowerCase()} day(s) left</span>
+              )}
+            </p>
+          )}
+          {balanceWarning && (
+            <p className="text-sm text-destructive" data-testid="leave-apply-balance-warning">
+              {balanceWarning}
             </p>
           )}
           <div className="space-y-2">
@@ -233,7 +258,7 @@ export function ApplyLeaveDialog({ request }: { request?: LeaveRequestSummary })
           <DialogFooter>
             <Button
               type="submit"
-              disabled={loading || !startDate || !endDate}
+              disabled={loading || !startDate || !endDate || Boolean(balanceWarning)}
               data-testid="leave-apply-submit"
             >
               {loading ? "Saving..." : isEdit ? "Save changes" : "Submit request"}

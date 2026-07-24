@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getProfileById } from "@/lib/auth/get-profile";
+import { checkRateLimit } from "@/lib/cache/ratelimit";
 import { logAudit } from "@/lib/audit";
-import { leaveDays } from "@/lib/leave";
-import type { Profile } from "@/lib/types";
+import { ensureLeaveBalance, leaveDays, LEAVE_TYPE_LABELS, remainingLeaveDays } from "@/lib/leave";
+import type { LeaveType } from "@/lib/types";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -17,11 +20,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const scope = searchParams.get("scope");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
+  const profile = await getProfileById(supabase, user.id);
 
   const isStaff = profile && ["admin", "hr"].includes(profile.role);
 
@@ -55,6 +54,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const allowed = await checkRateLimit(`leave-create:${user.id}`);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests, please slow down and try again." },
+      { status: 429 },
+    );
+  }
+
   const body = await request.json();
   const { leave_type, start_date, end_date, reason, employee_email } = body;
 
@@ -72,13 +79,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!(leave_type in LEAVE_TYPE_LABELS)) {
+    return NextResponse.json({ error: "Invalid leave_type" }, { status: 400 });
+  }
+
   let employeeId = user.id;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
+  const profile = await getProfileById(supabase, user.id);
 
   if (!profile) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -109,6 +116,27 @@ export async function POST(request: Request) {
     employeeId = targetEmployee.id;
   }
 
+  const days = leaveDays(start_date, end_date);
+  const year = new Date(start_date).getFullYear();
+  const typeLabel = LEAVE_TYPE_LABELS[leave_type as LeaveType];
+
+  // Admin-client because inserting a first-time balance row requires the
+  // staff-only RLS insert policy, same pattern as app/(dashboard)/leave/page.tsx.
+  const balance = await ensureLeaveBalance(createAdminClient(), employeeId, year);
+  const remaining = remainingLeaveDays(balance, leave_type as LeaveType);
+
+  if (days > remaining) {
+    return NextResponse.json(
+      {
+        error:
+          remaining <= 0
+            ? `No ${typeLabel} leave left for ${year}.`
+            : `Only ${remaining} day(s) of ${typeLabel} leave left for ${year} — this request needs ${days}.`,
+      },
+      { status: 400 },
+    );
+  }
+
   const { data, error } = await supabase
     .from("leave_requests")
     .insert({
@@ -125,7 +153,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  const days = leaveDays(start_date, end_date);
   const daysLabel = `${days}d`;
 
   await logAudit({

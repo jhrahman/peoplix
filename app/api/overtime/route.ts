@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getProfileById } from "@/lib/auth/get-profile";
+import { checkRateLimit } from "@/lib/cache/ratelimit";
 import { todayInDhaka } from "@/lib/attendance";
 import { isValidOvertimeHours } from "@/lib/overtime";
 import { logAudit } from "@/lib/audit";
-import type { Profile } from "@/lib/types";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -18,11 +19,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const scope = searchParams.get("scope");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
+  const profile = await getProfileById(supabase, user.id);
 
   const isStaff = profile && ["admin", "hr"].includes(profile.role);
 
@@ -52,6 +49,14 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const allowed = await checkRateLimit(`overtime-create:${user.id}`);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests, please slow down and try again." },
+      { status: 429 },
+    );
   }
 
   const body = await request.json();
@@ -92,11 +97,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
+  const profile = await getProfileById(supabase, user.id);
 
   if (profile) {
     await logAudit({

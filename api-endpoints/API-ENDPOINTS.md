@@ -110,12 +110,13 @@ Do not put real passwords, service-role keys, or production secrets in this file
   - Required: `leave_type`, `start_date`, `end_date`
   - `reason` optional
   - `employee_email` optional — **Admin/HR only**; files the request on behalf of another employee (used by bulk import). Omit this field for a normal self-request.
-- **Validation**: `end_date` must be on/after `start_date`; `employee_email` must match an existing profile.
+- **Validation**: `end_date` must be on/after `start_date`; `employee_email` must match an existing profile; `leave_type` must be one of `casual`/`sick`/`annual`; the requested day count must not exceed the employee's remaining balance for that leave type/year (see `leave_balances` in §3 of the project plan — checked here even though the actual deduction only happens on approval, so a request that can never be approved is rejected upfront).
 - **Success (201)**: `{ "data": LeaveRequest }`, `status: "pending"`
 - **Errors**:
-  - `400` — missing fields, invalid date range, or unknown `employee_email`
+  - `400` — missing fields, invalid date range, invalid `leave_type`, unknown `employee_email`, or the requested days exceed the employee's remaining balance (message names the leave type, year, and days remaining, e.g. `"No Casual leave left for 2026."` or `"Only 3 day(s) of Casual leave left for 2026 — this request needs 5."`)
   - `401` — not logged in
   - `403` — non-staff caller passed `employee_email`
+  - `429` — too many requests in a short window (rate-limited per employee; only active when Redis/Upstash is configured, see project plan §16)
 
 ### PATCH `/api/leave/{id}`
 This route serves two different actions, disambiguated by the request body shape.
@@ -128,10 +129,10 @@ This route serves two different actions, disambiguated by the request body shape
   { "status": "approved" }
   ```
   - `status` must be `"approved"` or `"rejected"`
-- **Behavior**: Only a `pending` request can be reviewed. On `"approved"`, increments the matching leave-balance `*_used` column by the requested day count (creating the year's balance row first if missing).
+- **Behavior**: Only a `pending` request can be reviewed. On `"approved"`, first checks that the requested day count still fits within the employee's remaining balance for that leave type/year (creating the year's balance row first if missing) — if it doesn't, the approval is rejected and the request stays `pending`, nothing is written. Only once that check passes does it increment the matching `*_used` column and flip the request to `approved`. This is what stops a balance from ever going negative, backed up by a `CHECK` constraint on `leave_balances` itself (see project plan §3/§16).
 - **Success (200)**: `{ "data": LeaveRequest }` (updated row, with `reviewed_by`/`reviewed_at` set)
 - **Errors**:
-  - `400` — invalid `status` value, or request is not currently `pending`
+  - `400` — invalid `status` value, request is not currently `pending`, or approving it would exceed the employee's remaining balance (message names the employee, leave type, days left, and days requested)
   - `401`, `403`
   - `404` — request not found
 
@@ -228,7 +229,7 @@ This route serves two different actions, disambiguated by the request body shape
 - **Body**: none
 - **Behavior**: Idempotent check-in for **today** for the calling user. If a record for today already exists, returns it unchanged instead of creating a duplicate.
 - **Success**: `200` (already checked in today) or `201` (new check-in) — `{ "data": Attendance }`
-- **Errors**: `400` (insert failed), `401`
+- **Errors**: `400` (insert failed), `401`, `429` (rate-limited; only active when Redis/Upstash is configured, see project plan §16)
 
 ### PATCH `/api/attendance/{id}`
 - **Auth**: Session required (RLS restricts to the caller's own record, or staff)
@@ -290,6 +291,7 @@ This route serves two different actions, disambiguated by the request body shape
 - **Errors**:
   - `400` — missing fields, `hours` outside range/not a 0.5 step, future-dated, or a duplicate entry for that date ("You already logged overtime for that date.")
   - `401` — not logged in
+  - `429` — rate-limited; only active when Redis/Upstash is configured, see project plan §16
 
 ### PATCH `/api/overtime/{id}`
 This route serves two different actions, disambiguated by the request body shape.
@@ -340,12 +342,12 @@ This route serves two different actions, disambiguated by the request body shape
 ### POST `/api/admin/clear-database`
 - **Auth**: **A single designated System Admin account only** — stricter than a plain `role === 'admin'` check. The route first requires `role === 'admin'` (`requireRole`), then additionally checks the caller's email against `isSystemAdmin()` (`lib/protected-employees.ts`) and rejects any other Admin, HR, or Employee account. The Danger Zone UI is not merely disabled for everyone else — it's not rendered in the DOM at all.
 - **Body**: none
-- **Behavior**: Permanently deletes **all rows** from `leave_requests`, `leave_balances`, `holidays`, `attendance`, and `overtime_requests`. Never touches `profiles` or Supabase Auth users — no accounts are affected.
+- **Behavior**: Permanently deletes **all rows** from `leave_requests`, `leave_balances`, `holidays`, `attendance`, and `overtime_requests`, using the service-role client rather than the caller's own session. This matters because a couple of these tables (notably `attendance`, which only allows deleting *your own, today's* row under normal RLS — see §4) would otherwise silently leave most rows behind, since a restrictive RLS policy just matches zero rows rather than erroring. The service-role client bypasses that entirely for this one, tightly-gated action. Afterward, it re-seeds a fresh default `leave_balances` row (10/14/15 days, 0 used) for every remaining employee, so the balances view is immediately clean instead of repopulating one employee at a time as each person happens to revisit `/leave`. Never touches `profiles` or Supabase Auth users — no accounts are affected.
 - **Success (200)**: `{ "data": { "cleared": ["leave_requests", "leave_balances", "holidays", "attendance", "overtime_requests"] } }`
 - **Errors**:
   - `401` — not logged in
   - `403` — logged in but not the System Admin account (includes every other Admin and HR account)
-  - `500` — deletion failed partway through (message names which table)
+  - `500` — deletion failed partway through (message names which table), or the tables were cleared but re-seeding `leave_balances` afterward failed
 
 ### POST `/api/admin/clear-audit-logs`
 - **Auth**: **Admin only** (not HR) — the usual Admin gate, deliberately *not* restricted to the System Admin account like Clear Database above, since this only clears history, not operational data.
@@ -455,6 +457,12 @@ Admin/HR-only or self-only). If you need to exercise this via an API client rath
 UI, query Supabase's PostgREST endpoint directly (`GET {SUPABASE_URL}/rest/v1/profiles`) with
 the logged-in user's access token — there is nothing under `/api/` to call for this feature.
 
+It also shows a small "on leave today" indicator next to anyone with an **approved** leave
+request covering the current date (Bangladesh time). That check queries `leave_requests` via
+the service-role client — regular employees can't read other people's leave rows under RLS,
+but a plain "away today" yes/no doesn't reveal the leave type or reason, so it's safe to surface
+here. Pending requests never trigger it, only approved ones.
+
 ---
 
 ## 10. Account — `/api/account`
@@ -552,8 +560,8 @@ window and returns `{ "data": { "deleted": <count> } }`.
 | PATCH | `/api/employees/{id}` | Admin/HR | Update employee |
 | DELETE | `/api/employees/{id}` | Admin/HR | Delete employee |
 | GET | `/api/leave` | Session | List leave requests (own, or all with `?scope=all` for staff) |
-| POST | `/api/leave` | Session | Apply for leave (or file on behalf of another employee, staff only) |
-| PATCH | `/api/leave/{id}` | Admin/HR (`status` body) or Session (owner, edit body) | Approve/reject a pending request, or self-edit your own pending request |
+| POST | `/api/leave` | Session | Apply for leave (or file on behalf of another employee, staff only) — rejected if it would exceed the remaining balance |
+| PATCH | `/api/leave/{id}` | Admin/HR (`status` body) or Session (owner, edit body) | Approve/reject a pending request (approval re-checks the balance first), or self-edit your own pending request |
 | DELETE | `/api/leave/{id}` | Session | Delete own pending request (or staff) |
 | GET | `/api/holidays` | Session | List holidays |
 | POST | `/api/holidays` | Admin/HR | Create holiday |
@@ -568,14 +576,14 @@ window and returns `{ "data": { "deleted": <count> } }`.
 | POST | `/api/overtime` | Session | Log overtime (self-entry only) |
 | PATCH | `/api/overtime/{id}` | Admin only (`status` body) or Session (owner, edit body) | Approve/reject a pending entry, or self-edit your own pending entry |
 | DELETE | `/api/overtime/{id}` | Session | Delete own pending overtime entry (or Admin) |
-| POST | `/api/admin/clear-database` | System Admin only | Wipe leave/holiday/attendance/overtime data (not accounts) |
+| POST | `/api/admin/clear-database` | System Admin only | Wipe leave/holiday/attendance/overtime data (not accounts), then re-seed fresh leave balances |
 | POST | `/api/admin/clear-audit-logs` | Admin only | Wipe all audit log history |
 | GET | `/api/signup-requests` | Admin only | List pending sign-up/access requests |
 | POST | `/api/signup-requests` | None (public) | Submit a self-service access request from `/signup` |
 | PATCH | `/api/signup-requests/{id}` | Admin only | Approve (creates account + sends invite email) or reject a request |
 | — | `/settings` (no API route for the mutation) | Session | Server Action + direct Supabase Auth calls — see §8 |
 | POST | `/api/settings/password-changed` | Session | Audit-log-only hook, fired after a client-side password change succeeds — see §8 |
-| — | `/directory` (no API route) | Session | Reads `profiles` directly via Supabase — see §9 |
+| — | `/directory` (no API route) | Session | Reads `profiles` (+ today's approved leave, for the "on leave today" indicator) directly via Supabase — see §9 |
 | DELETE | `/api/account` | Session | Delete your own account (all roles) — see §10 |
 | — | `/audit-log` (no API route) | Session | Reads `audit_logs` directly via Supabase, RLS-scoped — see §11 |
 | POST | `/api/auth/forgot-password` | None (public) | Check an email against real accounts and send a reset link — see §12 |

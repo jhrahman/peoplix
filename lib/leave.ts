@@ -25,6 +25,17 @@ export const LEAVE_TYPE_BALANCE_COLUMNS: Record<
   annual: { total: "annual_total", used: "annual_used" },
 };
 
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  casual: "Casual",
+  sick: "Sick",
+  annual: "Annual",
+};
+
+export function remainingLeaveDays(balance: LeaveBalance, leaveType: LeaveType) {
+  const { total, used } = LEAVE_TYPE_BALANCE_COLUMNS[leaveType];
+  return (balance[total] as number) - (balance[used] as number);
+}
+
 export async function ensureLeaveBalance(
   client: SupabaseClient,
   employeeId: string,
@@ -47,4 +58,22 @@ export async function ensureLeaveBalance(
 
   if (error) throw new Error(error.message);
   return created;
+}
+
+// Used to flag "on leave today" in the Team Directory - deliberately not
+// cached (unlike the directory's profile list): approval status can change
+// at any moment and the relevant date rolls over daily, so staleness here
+// would show wrong/misleading status rather than just a slow-to-update name.
+export async function getEmployeeIdsOnApprovedLeave(
+  client: SupabaseClient,
+  dateIso: string,
+): Promise<string[]> {
+  const { data } = await client
+    .from("leave_requests")
+    .select("employee_id")
+    .eq("status", "approved")
+    .lte("start_date", dateIso)
+    .gte("end_date", dateIso);
+
+  return (data ?? []).map((r) => r.employee_id as string);
 }

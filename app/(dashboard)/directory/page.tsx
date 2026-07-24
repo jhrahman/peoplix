@@ -2,6 +2,8 @@ import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Profile } from "@/lib/types";
+import { getEmployeeIdsOnApprovedLeave } from "@/lib/leave";
+import { todayInDhaka } from "@/lib/attendance";
 import { DirectoryList } from "@/components/directory/directory-list";
 
 // Directory data is readable by every authenticated user (see CLAUDE.md), so
@@ -23,7 +25,10 @@ const getDirectoryProfiles = unstable_cache(
 );
 
 export default async function DirectoryPage() {
-  const profiles = await getDirectoryProfiles();
+  const [profiles, onLeaveTodayIds] = await Promise.all([
+    getDirectoryProfiles(),
+    getEmployeeIdsOnApprovedLeave(createAdminClient(), todayInDhaka()),
+  ]);
 
   return (
     <Card>
@@ -31,7 +36,7 @@ export default async function DirectoryPage() {
         <CardTitle>Team directory</CardTitle>
       </CardHeader>
       <CardContent>
-        <DirectoryList profiles={profiles} />
+        <DirectoryList profiles={profiles} onLeaveTodayIds={onLeaveTodayIds} />
       </CardContent>
     </Card>
   );

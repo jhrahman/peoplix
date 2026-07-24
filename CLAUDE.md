@@ -6,6 +6,9 @@ Peoplix is a role-based HR management web app. Full plan: [hr-app-plan.md](hr-ap
 - Next.js (App Router) + TypeScript
 - Next.js API Routes as the backend (no separate server)
 - Supabase (Postgres + Auth), free tier
+- Upstash Redis (free tier) for caching and rate limiting — optional, never a hard dependency;
+  see `lib/cache/redis.ts` and `lib/cache/ratelimit.ts`. Every call site falls back to a live
+  Supabase query if Redis env vars are missing or a call fails.
 - Tailwind CSS + shadcn/ui, glassmorphism + light/dark theme (`next-themes`)
 - Vercel hosting, GitHub Actions CI/CD
 
@@ -28,6 +31,7 @@ Peoplix is a role-based HR management web app. Full plan: [hr-app-plan.md](hr-ap
 - `/app/api/*/route.ts` — REST endpoints, one resource per folder
 - `/components/ui` — shadcn primitives; `/components/layout` — Sidebar/Navbar/ThemeToggle; `/components/{feature}` — feature-specific
 - `/lib/supabase` — `client.ts` (browser), `server.ts` (server components/route handlers), `middleware.ts`
+- `/lib/cache` — `redis.ts` (Upstash wrapper: `getOrSetJSON`/`invalidate`), `ratelimit.ts` (`checkRateLimit`)
 - `/lib/types.ts` — shared types (mirror DB schema in plan §3)
 
 ## House style
@@ -42,6 +46,16 @@ Peoplix is a role-based HR management web app. Full plan: [hr-app-plan.md](hr-ap
 - Employees can only read/write their own rows unless role is `hr` or `admin`. **Exception:**
   `profiles` are readable (SELECT only) by every authenticated user, to power the read-only
   Team Directory (`/directory`) — write access (insert/update/delete) is untouched by this.
+- **`leave_balances.*_used` can never exceed `*_total` or go negative** — enforced both in the
+  API routes (`app/api/leave/route.ts` and `app/api/leave/[id]/route.ts` check remaining balance
+  before creating/approving a request) and at the database layer (`CHECK` constraints added in
+  `supabase/migrations/0012_leave_balance_caps.sql`). If you ever touch this table directly,
+  keep both layers in sync — don't rely on just one.
+- **Don't assume a table's RLS delete policy matches "any staff member can delete anything."**
+  Some are deliberately narrower for normal use (e.g. `attendance` only allows deleting your own
+  *today's* row — history can't be deleted by anyone, including Admin). A route that genuinely
+  needs to wipe a table regardless of that (like `admin/clear-database`) must use the service-role
+  client and say so in a comment — RLS silently deleting zero matching rows looks like success.
 
 ## Testing
 - No AI-generated tests in this repo. Test scripts, if/when added, are written manually by the user in a separate pass — don't propose or generate test suites unless explicitly asked.

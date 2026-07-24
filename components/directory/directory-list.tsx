@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Profile } from "@/lib/types";
 import { getInitials } from "@/lib/utils";
 import { CopyEmailButton } from "@/components/directory/copy-email-button";
@@ -22,8 +23,15 @@ type DirectoryProfile = Pick<
   "id" | "full_name" | "designation" | "department" | "email" | "phone" | "avatar_url"
 >;
 
-export function DirectoryList({ profiles }: { profiles: DirectoryProfile[] }) {
+export function DirectoryList({
+  profiles,
+  onLeaveTodayIds = [],
+}: {
+  profiles: DirectoryProfile[];
+  onLeaveTodayIds?: string[];
+}) {
   const [query, setQuery] = useState("");
+  const onLeaveToday = useMemo(() => new Set(onLeaveTodayIds), [onLeaveTodayIds]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -97,6 +105,21 @@ export function DirectoryList({ profiles }: { profiles: DirectoryProfile[] }) {
                         </AvatarFallback>
                       </Avatar>
                       <span className="font-medium">{profile.full_name}</span>
+                      {onLeaveToday.has(profile.id) && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span
+                              className="shrink-0 text-sm leading-none"
+                              role="img"
+                              aria-label="On leave today"
+                              data-testid={`directory-on-leave-${profile.id}`}
+                            >
+                              🌴
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>On leave today</TooltipContent>
+                        </Tooltip>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>{profile.designation ?? "—"}</TableCell>

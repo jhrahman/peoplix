@@ -38,10 +38,10 @@ export default async function LeavePage() {
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>My leave requests</CardTitle>
-          <ApplyLeaveDialog />
+          <ApplyLeaveDialog balance={balance} />
         </CardHeader>
         <CardContent>
-          <MyLeaveTable requests={myRequests ?? []} />
+          <MyLeaveTable requests={myRequests ?? []} balance={balance} />
         </CardContent>
       </Card>
 

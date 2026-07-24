@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ensureLeaveBalance, leaveDays, LEAVE_TYPE_BALANCE_COLUMNS } from "@/lib/leave";
+import {
+  ensureLeaveBalance,
+  leaveDays,
+  LEAVE_TYPE_BALANCE_COLUMNS,
+  LEAVE_TYPE_LABELS,
+  remainingLeaveDays,
+} from "@/lib/leave";
 import { logAudit } from "@/lib/audit";
 import type { LeaveRequest, Profile } from "@/lib/types";
 
@@ -49,6 +55,30 @@ export async function PATCH(
     );
   }
 
+  if (status === "approved") {
+    const admin = createAdminClient();
+    const year = new Date(existing.start_date).getFullYear();
+    const balance = await ensureLeaveBalance(admin, existing.employee_id, year);
+    const days = leaveDays(existing.start_date, existing.end_date);
+    const remaining = remainingLeaveDays(balance, existing.leave_type);
+
+    if (days > remaining) {
+      const typeLabel = LEAVE_TYPE_LABELS[existing.leave_type];
+      return NextResponse.json(
+        {
+          error: `Approving this would exceed ${existing.employee?.full_name ?? "the employee"}'s remaining ${typeLabel} leave balance (${remaining} day(s) left, ${days} requested).`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const { used } = LEAVE_TYPE_BALANCE_COLUMNS[existing.leave_type];
+    await admin
+      .from("leave_balances")
+      .update({ [used]: (balance[used] as number) + days })
+      .eq("id", balance.id);
+  }
+
   const { data: updated, error: updateError } = await auth.supabase
     .from("leave_requests")
     .update({ status, reviewed_by: auth.user.id, reviewed_at: new Date().toISOString() })
@@ -58,19 +88,6 @@ export async function PATCH(
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 400 });
-  }
-
-  if (status === "approved") {
-    const admin = createAdminClient();
-    const year = new Date(existing.start_date).getFullYear();
-    const balance = await ensureLeaveBalance(admin, existing.employee_id, year);
-    const days = leaveDays(existing.start_date, existing.end_date);
-    const { used } = LEAVE_TYPE_BALANCE_COLUMNS[existing.leave_type];
-
-    await admin
-      .from("leave_balances")
-      .update({ [used]: (balance[used] as number) + days })
-      .eq("id", balance.id);
   }
 
   await logAudit({

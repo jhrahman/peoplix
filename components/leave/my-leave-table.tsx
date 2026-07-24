@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { LeaveRequestSummary, LeaveStatus } from "@/lib/types";
+import type { LeaveBalance, LeaveRequestSummary, LeaveStatus } from "@/lib/types";
 import { leaveDays } from "@/lib/leave";
 import { ApplyLeaveDialog } from "@/components/leave/apply-leave-dialog";
 
@@ -22,7 +22,13 @@ const STATUS_VARIANT: Record<LeaveStatus, "secondary" | "default" | "destructive
   rejected: "destructive",
 };
 
-export function MyLeaveTable({ requests }: { requests: LeaveRequestSummary[] }) {
+export function MyLeaveTable({
+  requests,
+  balance,
+}: {
+  requests: LeaveRequestSummary[];
+  balance: LeaveBalance;
+}) {
   const router = useRouter();
   const [cancelingId, setCancelingId] = useState<string | null>(null);
 
@@ -78,7 +84,7 @@ export function MyLeaveTable({ requests }: { requests: LeaveRequestSummary[] }) 
               <TableCell className="text-right">
                 {request.status === "pending" && (
                   <div className="flex justify-end gap-1">
-                    <ApplyLeaveDialog request={request} />
+                    <ApplyLeaveDialog request={request} balance={balance} />
                     <Button
                       variant="ghost"
                       size="sm"

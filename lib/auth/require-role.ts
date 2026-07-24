@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile, UserRole } from "@/lib/types";
+import { getProfileById } from "@/lib/auth/get-profile";
+import type { UserRole } from "@/lib/types";
 
 // Server-side gate for API routes: never trust a client-side role check alone.
 export async function requireRole(roles: UserRole[]) {
@@ -13,11 +14,7 @@ export async function requireRole(roles: UserRole[]) {
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) } as const;
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
+  const profile = await getProfileById(supabase, user.id);
 
   if (!profile || !roles.includes(profile.role)) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) } as const;
