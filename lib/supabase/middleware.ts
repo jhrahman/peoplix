@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { bearerTokenFrom } from "@/lib/auth/bearer";
 
 // Reachable without a session.
 const PUBLIC_PATHS = ["/login", "/signup", "/reset-password"];
@@ -11,6 +12,15 @@ const REDIRECT_IF_AUTHED_PATHS = ["/login", "/signup"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  // A caller presenting an access token (see POST /api/auth/login) has no session
+  // cookie to refresh, so there's nothing for this middleware to do - pass it
+  // through and let the page's own createClient()/getCurrentProfile() validate the
+  // token, which is where a bad one turns into a redirect anyway. Checking it here
+  // too would add a second Supabase round-trip to every page request.
+  if (bearerTokenFrom(request.headers.get("authorization"))) {
+    return response;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

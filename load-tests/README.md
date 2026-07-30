@@ -21,11 +21,14 @@ script only reads data.
 ## Run it
 
 ```bash
-k6 run -e SUPABASE_URL=https://your-project.supabase.co -e SUPABASE_ANON_KEY=your-anon-key -e TEST_EMAIL=you@example.com -e TEST_PASSWORD=yourpassword load-tests/load-test.js
+k6 run -e TEST_EMAIL=you@example.com -e TEST_PASSWORD=yourpassword load-tests/load-test.js
 ```
 
-`SUPABASE_URL`/`SUPABASE_ANON_KEY` are the same values as `NEXT_PUBLIC_SUPABASE_URL` /
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` in your `.env.local`.
+No Supabase URL or anon key needed anymore: `setup()` calls the app's own
+`POST /api/auth/login`, which returns `access_token` in the response body, and every page and
+`/api/*` route accepts that token as `Authorization: Bearer <access_token>`. (This script used to
+sign in to Supabase directly and hand-assemble the session cookie — see
+[API-ENDPOINTS.md](../api-endpoints/API-ENDPOINTS.md) §12 for the endpoint it uses instead.)
 
 Defaults to 50 virtual users for 1 minute. Change either with `-e VUS=100 -e DURATION=3m`. If your
 app isn't on port 3000, add `-e BASE_URL=http://localhost:PORT`.

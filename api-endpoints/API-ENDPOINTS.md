@@ -3,13 +3,96 @@
 Base URL (local): `http://localhost:3000`
 Base URL (production): `https://peoplix-hr.vercel.app`
 
-All endpoints are Next.js API Routes under `/api/*`. None of them accept an API key in headers — auth is via the **Supabase session cookie** set when you log in through the web app (`/login`). For API-client testing (Postman/Insomnia/curl), log in through the browser first and copy the session cookies from dev tools, or drive the requests through a script that first calls Supabase's `signInWithPassword` and reuses the resulting cookies.
+All endpoints are Next.js API Routes under `/api/*`. None of them accept an API key in headers.
+
+## 🔑 Login API — quick start
+
+> **URL (local):** `http://localhost:3000/api/auth/login`
+> **URL (production):** `https://peoplix-hr.vercel.app/api/auth/login`
+> **Method:** `POST`
+> **Header:** `Content-Type: application/json`
+
+**Sample request body:**
+```json
+{
+  "email": "your.email@example.com",
+  "password": "your-password"
+}
+```
+
+**Sample response (200 OK):**
+```json
+{
+  "data": {
+    "access_token": "eyJhbGciOi...",
+    "refresh_token": "xkq2f...",
+    "token_type": "bearer",
+    "expires_in": 3600,
+    "expires_at": 1785412345,
+    "user": {
+      "id": "6f1c...-uuid",
+      "email": "your.email@example.com",
+      "full_name": "Jane Doe",
+      "role": "employee"
+    }
+  }
+}
+```
+
+**What to do with it:** copy `data.access_token` from the response, then put it on every other
+request as a header:
+```
+Authorization: Bearer eyJhbGciOi...
+```
+That works for every `/api/*` endpoint and every page in this app — no cookies needed.
+
+**Sample curl, start to finish:**
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"your.email@example.com","password":"your-password"}'
+```
+
+Full details on the rest of the auth endpoints (`/api/auth/me`, `/api/auth/refresh`,
+`/api/auth/logout`) are in §12 below.
+
+---
+
+## Authenticating an API client
+
+Call `POST /api/auth/login` (§12) with an email and password. It returns the tokens **in the JSON
+body** and also sets the Supabase session cookie, so:
+
+- **API clients / k6 / CI** — take `data.access_token` from the body and send
+  `Authorization: Bearer <access_token>` on every subsequent request. No cookie handling, no
+  reconstructing Supabase's cookie encoding.
+- **Browsers / cookie-jar clients (curl `-c`/`-b`, Postman)** — do nothing; the cookie is already
+  set and works exactly as it did before.
+
+Both credentials are accepted **everywhere**: every `/api/*` route and every rendered page. The
+bearer token is not a shortcut around any check — Supabase verifies the JWT server-side and the
+same RLS policies and role gates apply either way. This is handled centrally in
+`lib/supabase/server.ts`, so no route has (or needs) its own bearer handling.
+
+```bash
+# 1. log in, keep the token
+TOKEN=$(curl -s -X POST "$BASE_URL/api/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}" | jq -r .data.access_token)
+
+# 2. use it on any endpoint
+curl -s "$BASE_URL/api/auth/me"  -H "Authorization: Bearer $TOKEN"
+curl -s "$BASE_URL/api/leave"    -H "Authorization: Bearer $TOKEN"
+```
+
+The web app's own login form is unaffected: it still signs in to Supabase directly from the browser
+and never calls `/api/auth/login`. That route exists for scripted callers.
 
 Do not put real passwords, service-role keys, or production secrets in this file or in any test collection — reference environment variables instead.
 
 ## Conventions used below
 
-- **Auth**: `Session required` = any logged-in user; `Admin/HR` or `Admin only` = role is re-checked server-side, not just hidden in the UI.
+- **Auth**: `Session required` = any logged-in user — either credential (bearer token or session cookie) counts; `Admin/HR` or `Admin only` = role is re-checked server-side, not just hidden in the UI.
 - **Success shape**: `{ "data": ... }`
 - **Error shape**: `{ "error": "message" }`
 - Common status codes: `401 Unauthorized` (no session), `403 Forbidden` (session okay, role not allowed), `400 Bad Request` (validation), `404 Not Found`, `500 Internal Server Error`.
@@ -430,7 +513,8 @@ them is **Admin only** — not HR, unlike every other Admin/HR-gated resource in
   has an active session.
 
 If you need to exercise either mutation via an API client rather than the UI, you'll need a valid
-Supabase session and must call these through the Supabase client SDK/REST directly.
+Supabase session and must call these through the Supabase client SDK/REST directly — the
+`access_token` from `POST /api/auth/login` (§12) is the session to use.
 
 ### POST `/api/settings/password-changed`
 - **Auth**: Session required
@@ -455,7 +539,9 @@ Supabase (no `/api/*` route backs it). Since migration `0006_profiles_directory_
 every authenticated user can `SELECT` all profiles (write access is unchanged — still
 Admin/HR-only or self-only). If you need to exercise this via an API client rather than the
 UI, query Supabase's PostgREST endpoint directly (`GET {SUPABASE_URL}/rest/v1/profiles`) with
-the logged-in user's access token — there is nothing under `/api/` to call for this feature.
+the `access_token` from `POST /api/auth/login` (§12) — there is nothing under `/api/` to call for
+this feature. Alternatively, `GET /directory` itself accepts `Authorization: Bearer <access_token>`
+like every other page, if rendering the page (rather than reading the data) is what you're testing.
 
 It also shows a small "on leave today" indicator next to anyone with an **approved** leave
 request covering the current date (Bangladesh time). That check queries `leave_requests` via
@@ -500,9 +586,9 @@ session so RLS does the actual scoping:
   daily cleanup cron (below) hasn't caught up to physically delete them yet.
 
 If you need to exercise the read side via an API client rather than the UI, query Supabase's
-PostgREST endpoint directly (`GET {SUPABASE_URL}/rest/v1/audit_logs`) with the logged-in user's
-access token — there is nothing under `/api/` to call for reading audit logs. See §6 above for the
-one write route this feature does have (`POST /api/admin/clear-audit-logs`, Admin-only).
+PostgREST endpoint directly (`GET {SUPABASE_URL}/rest/v1/audit_logs`) with the `access_token` from
+`POST /api/auth/login` (§12) — there is nothing under `/api/` to call for reading audit logs. See §6
+above for the one write route this feature does have (`POST /api/admin/clear-audit-logs`, Admin-only).
 
 **Retention cleanup (internal, not user-callable)**: `GET /api/cron/audit-log-cleanup` is hit daily
 by Vercel Cron (`vercel.json`), not by any client. It requires an `Authorization: Bearer <CRON_SECRET>`
@@ -512,7 +598,90 @@ window and returns `{ "data": { "deleted": <count> } }`.
 
 ---
 
-## 12. Auth — `/api/auth/forgot-password`
+## 12. Auth — `/api/auth/*`
+
+### POST `/api/auth/login`
+- **Auth**: none — this is how you get a credential
+- **Body (JSON)**:
+  ```json
+  { "email": "someone@example.com", "password": "your-password" }
+  ```
+  - Both required
+- **Behavior**: Signs in against Supabase Auth (`signInWithPassword`). On success it does **two**
+  things: sets the Supabase session cookie on the response (so a browser or cookie-jar client is
+  logged in as usual), **and** returns the tokens in the JSON body so a scripted client can use
+  `Authorization: Bearer <access_token>` directly — see *Authenticating an API client* at the top
+  of this file. The web app's login form does not use this route; it signs in to Supabase directly
+  from the browser.
+- **Success (200)**:
+  ```json
+  {
+    "data": {
+      "access_token": "eyJhbGciOi...",
+      "refresh_token": "xkq2f...",
+      "token_type": "bearer",
+      "expires_in": 3600,
+      "expires_at": 1785412345,
+      "user": {
+        "id": "6f1c...-uuid",
+        "email": "someone@example.com",
+        "full_name": "Jane Doe",
+        "role": "employee"
+      }
+    }
+  }
+  ```
+  - `expires_in` is seconds from now; `expires_at` is absolute unix seconds (either is enough to
+    drive a refresh loop). `full_name`/`role` come from the caller's `profiles` row and are `null`
+    if no profile exists yet.
+- **Errors**:
+  - `400` — body isn't valid JSON, or `email`/`password` missing
+  - `401` — bad credentials (Supabase's own message is passed through, e.g. `"Invalid login credentials"`).
+    Note this is `401`, not the `400` Supabase itself returns, to match the rest of this API.
+  - `429` — **not** a rate limit on logins. Only *failed* attempts are counted, and only above 150
+    failures on one email within a 10-second window, so a load test signing in with valid
+    credentials is never throttled and a wrong-password test suite clears itself 10 seconds later.
+    Only active when Redis/Upstash is configured (project plan §16); without Redis there is no
+    ceiling at all.
+- **Not audit-logged.** None of the four routes in this section write an `audit_logs` entry —
+  `AuditAction` has no login/logout action, and a load test would flood the 10-day retention
+  window (§11) with sign-ins. Don't expect audit rows from an auth test run.
+
+### GET `/api/auth/me`
+- **Auth**: Session required (bearer token or cookie)
+- **Body**: none
+- **Behavior**: "Is this credential valid, and who does it belong to?" — the one call worth making
+  after logging in, before asserting anything role-specific. Read-only.
+- **Success (200)**: `{ "data": { "user": { "id": "...", "email": "..." }, "profile": Profile } }`
+  — `profile` is the full row, so `profile.role` is what to assert against for role-based tests.
+- **Errors**:
+  - `401` — no credential, or the token is invalid/expired
+  - `404` — token is valid but no `profiles` row exists for that user
+
+### POST `/api/auth/refresh`
+- **Auth**: none directly — the refresh token *is* the credential
+- **Body (JSON, optional)**:
+  ```json
+  { "refresh_token": "xkq2f..." }
+  ```
+  - If omitted (or the body isn't JSON), the session cookie's refresh token is used instead.
+- **Behavior**: Exchanges a refresh token for a fresh access token, and updates the session cookie
+  too. An access token lasts ~1 hour, so a long soak test needs this rather than signing in again
+  (repeated sign-ins count against Supabase's own auth rate limits). The old refresh token is
+  consumed — use the new one from the response next time.
+- **Success (200)**: identical shape to `POST /api/auth/login` above
+- **Errors**: `401` — refresh token missing, already used, or expired (e.g. `"Refresh token is not valid"`)
+
+### POST `/api/auth/logout`
+- **Auth**: Session required (bearer token or cookie)
+- **Body**: none
+- **Behavior**: Revokes the caller's session server-side. With a bearer token, that specific access
+  token is revoked (the token is dead for every client holding it, so don't call this mid-run if
+  other VUs share the token). With a cookie, the session is revoked and the cookies are cleared.
+- **Success (200)**: `{ "data": { "signed_out": true } }`
+- **Errors**:
+  - `401` — no credential, or the bearer token was already invalid
+  - `400` — sign-out failed (message passed through)
 
 ### POST `/api/auth/forgot-password`
 - **Auth**: none — publicly callable from the login page's "Forgot password?" dialog
@@ -586,6 +755,10 @@ window and returns `{ "data": { "deleted": <count> } }`.
 | — | `/directory` (no API route) | Session | Reads `profiles` (+ today's approved leave, for the "on leave today" indicator) directly via Supabase — see §9 |
 | DELETE | `/api/account` | Session | Delete your own account (all roles) — see §10 |
 | — | `/audit-log` (no API route) | Session | Reads `audit_logs` directly via Supabase, RLS-scoped — see §11 |
+| POST | `/api/auth/login` | None (public) | Sign in — sets the session cookie **and** returns `access_token`/`refresh_token` in the body — see §12 |
+| GET | `/api/auth/me` | Session | Verify a token and return the caller's user + profile (role) — see §12 |
+| POST | `/api/auth/refresh` | Refresh token | Exchange a refresh token for a fresh access token — see §12 |
+| POST | `/api/auth/logout` | Session | Revoke the caller's session — see §12 |
 | POST | `/api/auth/forgot-password` | None (public) | Check an email against real accounts and send a reset link — see §12 |
 | POST | `/api/auth/password-set` | Session (recovery link) | Log "joined" (first-ever password) or a password reset from `/reset-password` — see §12 |
 | GET | `/api/cron/audit-log-cleanup` | `CRON_SECRET` bearer token (Vercel Cron only) | Daily hard-delete of audit logs older than 10 days — see §11 |
