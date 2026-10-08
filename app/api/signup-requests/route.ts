@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
+import { logAuthEvent } from "@/lib/auth-events";
 
 export async function GET() {
   const auth = await requireRole(["admin"]);
@@ -52,6 +53,8 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  await logAuthEvent({ event: "signup_requested", email, detail: String(full_name).slice(0, 100), request });
 
   return NextResponse.json({ data: { submitted: true } }, { status: 201 });
 }

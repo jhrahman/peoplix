@@ -957,6 +957,38 @@ query costs one call, not one per person. Results are G-rated.
 
 ---
 
+## 17. Account activity — `/api/admin/*` (Admin only)
+
+Backs the `/account-activity` page. **Admin only**, re-checked from the session on every route (HR and
+Employees get `403`), and the event table's own RLS policy allows nobody else to read it.
+
+**What is recorded.** The People tab is derived live from Supabase Auth and `profiles.password_set_at`
+(no endpoint; the page reads it on the server). The Activity tab reads `auth_events`, written by the API at
+the moment each thing happens and kept **90 days**: `signup_requested`, `signup_approved`, `signup_rejected`,
+`invite_sent`, `invite_resent`, `password_set` (first password), `password_reset_requested`,
+`password_reset_unknown_email`, `password_reset_completed`, `password_changed`. An event is only written when
+the thing really happened (an invite whose email failed to send is not logged), and never contains a password,
+token or link. No endpoint can create, change or delete an event.
+
+### GET `/api/admin/auth-events`
+- **Auth**: Admin only
+- **Query params**: `type` (one of the event names above; unknown values are ignored), `q` (partial email, literal match), `before` (ISO timestamp, for the next page)
+- **Success (200)**: `{ "data": AuthEvent[], "has_more": boolean }` — newest first, 25 per page; an `AuthEvent` is `{ id, event, user_id, email, actor_id, detail, ip, user_agent, created_at }`
+- **Errors**: `401`; `403` — not an Admin; `400` — malformed `before`
+
+### POST `/api/admin/account-activity/resend-invite`
+- **Auth**: Admin only
+- **Body (JSON)**: `{ "user_id": "uuid" }`
+- **Behavior**: sends the "set your password" email again. Only for accounts that have **not** set a password yet, so it can't be used to trigger reset emails for active people. Records an `invite_resent` event and an Audit Log entry.
+- **Success (200)**: `{ "data": { "sent": true } }`
+- **Errors**: `400` — missing/invalid id, the person already has a password, or the email provider's own limit on how often one address can be emailed; `401`; `403`; `404` — no such employee; `429` — rate limited
+
+Routes that now write events (their own responses are unchanged): `POST /api/signup-requests`,
+`PATCH /api/signup-requests/{id}`, `POST /api/employees`, `POST /api/auth/forgot-password`,
+`POST /api/auth/password-set`, `POST /api/settings/password-changed`.
+
+---
+
 ## Quick reference table
 
 | Method | Endpoint | Auth | Purpose |
@@ -996,6 +1028,8 @@ query costs one call, not one per person. Results are G-rated.
 | GET | `/api/wishes` | Session | The wishes on one birthday / milestone card — see §15 |
 | POST | `/api/wishes` | Session | Sign a birthday or work-anniversary card (server verifies it is their day) |
 | DELETE | `/api/wishes/{id}` | Session (sender, or Admin) | Remove a wish |
+| GET | `/api/admin/auth-events` | Admin only | Account security event history (90 days), filterable and paged — see §17 |
+| POST | `/api/admin/account-activity/resend-invite` | Admin only | Resend the invite email to someone who hasn't set a password |
 | GET | `/api/gifs` | Session | Search GIFs (GIPHY) for comments; trending when `q` is empty — see §16 |
 | POST | `/api/wishes/comments` | Session | Comment on a celebration card (supports @tags and one small photo / clip / GIF) |
 | DELETE | `/api/wishes/comments/{id}` | Session (author, or Admin) | Delete a card comment |
@@ -1021,4 +1055,4 @@ query costs one call, not one per person. Results are G-rated.
 | POST | `/api/auth/logout` | Session | Revoke the caller's session — see §12 |
 | POST | `/api/auth/forgot-password` | None (public) | Check an email against real accounts and send a reset link — see §12 |
 | POST | `/api/auth/password-set` | Session (recovery link) | Log "joined" (first-ever password) or a password reset from `/reset-password` — see §12 |
-| GET | `/api/cron/audit-log-cleanup` | `CRON_SECRET` bearer token (Vercel Cron only) | Daily hard-delete of audit logs older than 10 days (and notifications older than 30) — see §11 |
+| GET | `/api/cron/audit-log-cleanup` | `CRON_SECRET` bearer token (Vercel Cron only) | Daily hard-delete of audit logs older than 10 days (notifications older than 30, and security events older than 90) — see §11 |

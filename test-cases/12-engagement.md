@@ -487,3 +487,15 @@ Access: every role (Admin, HR, Employee) can read, post, comment, and react. Ann
 | 338 | Check the picker size | Any | It is about 21rem wide and no taller than 18rem plus tabs and footer, and stays inside a 375px screen with margins |
 | 339 | Use the picker in dark mode | Dark theme | Tabs, group titles, the highlight, and the skin-tone dots (with the selected one ringed) are all readable |
 | 340 | Use the keyboard | Tab through the picker | Search, group tabs, emojis and skin-tone dots all take focus with a visible ring; Esc closes the picker |
+
+## Media alignment in posts
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 341 | Post a single photo | One 1 MB photo | The thumbnail sits in the **centre** of the post card, not against the left edge |
+| 342 | Post two, three and four photos | Each count | The photo grid is centred in the card (its width is capped, so it never stretches edge to edge) |
+| 343 | Post a video | One 5 MB clip | The player is centred, capped at a readable width, with controls |
+| 344 | View an announcement with media in the right-hand column | Announcement with a photo | Centred within that narrower card as well |
+| 345 | View post media at 375px width | Phone viewport | Centred when narrower than the card; fills the width, with margins, when the card is the narrower of the two; never overflows sideways |
+| 346 | Check comment media | A photo, clip or GIF in a comment | Stays left-aligned under the comment it belongs to (like a chat message), unlike post media |
+| 347 | Open a centred photo | Click it | The viewer still opens at full size |

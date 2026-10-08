@@ -72,6 +72,7 @@ What this project is meant to show, beyond "it has the usual HR pages":
 ### Administration and compliance
 
 - **Audit log.** Records who did what: leave and overtime actions, attendance edits, employee changes, signup approvals, profile edits (field by field), password changes, and every action on the Engagement page (posts, comments, reactions, votes, wishes, and deletes) with a readable message such as "Reacted 👍 to Jane Doe's post". Everyone sees their own history, only Admin sees everyone's, and entries are pruned after 10 days by a daily cron.
+- **Account activity (Admin only).** A monitoring page for account health. The People tab shows where every employee is in the sign-up journey, worked out live from Supabase Auth: invite pending, setup not finished (opened the link but never chose a password), active, or reset pending, with invites that have been waiting over a week flagged and a one-click "Resend invite". The Activity tab is a 90-day trail of access requests, approvals, invites, first-password setups, forgot-password requests (including attempts on unregistered addresses), resets, and password changes, with the time and IP. It is readable by Admin only, is append-only (nobody can edit or erase it), and never contains a password, link, or token.
 - **Danger Zone.** A type-to-confirm wipe of leave, holiday, attendance, overtime, and engagement data (including uploaded files), restricted to a single System Admin account and hidden from everyone else. It uses the service-role client on purpose, because some tables have narrower delete rules by design.
 
 ### Platform
@@ -91,7 +92,7 @@ What this project is meant to show, beyond "it has the usual HR pages":
 | Import and export | `papaparse` (CSV), `exceljs` (XLSX) |
 | Hosting | Vercel, deploying automatically on push to `main` |
 | CI | GitHub Actions (lint and build on every push and pull request) |
-| Scheduled jobs | Vercel Cron, daily cleanup of old audit logs and notifications |
+| Scheduled jobs | Vercel Cron, daily cleanup of old audit logs, notifications and security events |
 
 ## Roles and permissions
 
@@ -122,6 +123,7 @@ peoplix/
 │   │   ├── holidays/                   Holiday calendar
 │   │   ├── engagement/                 Feed and announcements, plus posts/[id] single-post view
 │   │   ├── notifications/              Notifications page
+│   │   ├── account-activity/           Admin only: who finished sign-up, plus the security event trail
 │   │   ├── audit-log/                  Who-did-what history
 │   │   └── settings/                   Profile, photo, password, Danger Zone, delete account
 │   └── api/                          REST endpoints, one folder per resource
@@ -214,7 +216,7 @@ Then:
 There is no automated test suite in this repo by design (see `CLAUDE.md`). Instead, the project ships with detailed references written so they can be turned straight into a Playwright suite later. Every interactive element in the UI carries a `data-testid` that matches them.
 
 - **[`test-cases/`](test-cases/)**: page-by-page cases in an Action / Test Data / Expected Result format:
-  [login](test-cases/01-login-authentication.md), [dashboard](test-cases/02-dashboard.md), [employees](test-cases/03-employees.md), [leave](test-cases/04-leave.md), [holidays](test-cases/05-holidays.md), [attendance](test-cases/06-attendance.md), [settings and Danger Zone](test-cases/07-settings-danger-zone.md), [overtime](test-cases/08-overtime.md), [directory](test-cases/09-directory.md), [signup requests](test-cases/10-signup-requests.md), [audit log](test-cases/11-audit-log.md), [employee engagement](test-cases/12-engagement.md), and [notifications](test-cases/13-notifications.md).
+  [login](test-cases/01-login-authentication.md), [dashboard](test-cases/02-dashboard.md), [employees](test-cases/03-employees.md), [leave](test-cases/04-leave.md), [holidays](test-cases/05-holidays.md), [attendance](test-cases/06-attendance.md), [settings and Danger Zone](test-cases/07-settings-danger-zone.md), [overtime](test-cases/08-overtime.md), [directory](test-cases/09-directory.md), [signup requests](test-cases/10-signup-requests.md), [audit log](test-cases/11-audit-log.md), [employee engagement](test-cases/12-engagement.md), [notifications](test-cases/13-notifications.md), and [account activity](test-cases/14-account-activity.md).
 - **[`api-endpoints/API-ENDPOINTS.md`](api-endpoints/API-ENDPOINTS.md)**: a reference for every `/api/*` route with method, required role, request body, response shape, and error codes. Use it with Postman, `curl`, or Playwright's `request` fixture: sign in with `POST /api/auth/login`, then send the returned token as `Authorization: Bearer <token>`.
 - **[`load-tests/`](load-tests/)**: a k6 script that exercises the main pages with GET requests only, so it is safe to run repeatedly. It was written with roughly 100 to 120 concurrent users in mind.
 - **CI**: lint and a production build on every push and pull request.

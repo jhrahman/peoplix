@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { logAuthEvent } from "@/lib/auth-events";
 import type { Profile } from "@/lib/types";
 
 // Called from /reset-password right after supabase.auth.updateUser() succeeds -
@@ -11,7 +12,7 @@ import type { Profile } from "@/lib/types";
 //  - otherwise: this is an existing employee who forgot their password ->
 //    logged as an ordinary password update.
 // Either way, password_set_at is stamped so a later reset doesn't re-log "joined".
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -42,6 +43,13 @@ export async function POST() {
     comment: isFirstTime
       ? `${profile.email} has been registered to the app`
       : "Reset password via forgot-password link",
+  });
+
+  await logAuthEvent({
+    event: isFirstTime ? "password_set" : "password_reset_completed",
+    email: profile.email,
+    userId: profile.id,
+    request,
   });
 
   if (isFirstTime) {

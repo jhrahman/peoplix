@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
 import { logAudit } from "@/lib/audit";
+import { logAuthEvent } from "@/lib/auth-events";
 
 export async function GET() {
   const auth = await requireRole(["admin", "hr"]);
@@ -70,6 +71,15 @@ export async function POST(request: Request) {
     });
     if (resetError) {
       console.error("Failed to send password setup email:", resetError.message);
+    } else {
+      await logAuthEvent({
+        event: "invite_sent",
+        email,
+        userId: created.user.id,
+        actorId: auth.profile.id,
+        detail: `Invited by ${auth.profile.full_name}`,
+        request,
+      });
     }
 
     await logAudit({

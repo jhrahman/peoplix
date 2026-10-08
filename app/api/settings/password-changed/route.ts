@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logAudit } from "@/lib/audit";
+import { logAuthEvent } from "@/lib/auth-events";
 import type { Profile } from "@/lib/types";
 
 // The password update itself happens client-side via supabase.auth.updateUser()
@@ -8,7 +9,7 @@ import type { Profile } from "@/lib/types";
 // involved in that call at all. This route exists purely so that success can
 // be recorded in the audit log, gated by the caller's own session cookie so
 // the actor identity can't be spoofed.
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -33,6 +34,7 @@ export async function POST() {
       entity: "password",
       comment: "Changed account password",
     });
+    await logAuthEvent({ event: "password_changed", email: profile.email, userId: profile.id, request });
   }
 
   return NextResponse.json({ data: { ok: true } });

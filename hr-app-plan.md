@@ -173,6 +173,31 @@ requests right now," not "did you come from the dashboard."
 
 ---
 
+11. **Account activity** *(ad-hoc, post-v1, Admin only)* — an `/account-activity` page answering "who has
+    actually finished setting up their account, and what has happened with passwords?". Two parts,
+    deliberately kept apart:
+    - **People (live state):** each employee's place in the journey, derived on the fly from Supabase Auth
+      (`invited_at`, `recovery_sent_at`, `last_sign_in_at`) and `profiles.password_set_at`: *Invite pending*,
+      *Setup not finished* (opened the link, which counts as signing in, but never chose a password),
+      *Active*, or *Reset pending*. Nothing is stored for this, so it can't drift out of date. Invites waiting
+      over 7 days (counted from the most recent email) are flagged, and an Admin can **resend the invite**
+      (only for people with no password yet, so it can't be used to spam resets at active employees).
+    - **Activity (history):** an append-only security trail, `auth_events`, written by the API with the
+      service-role client at each point it happens: access requested / approved / rejected, invite sent or
+      resent, first password set, forgot-password requested (including for an **unknown email**, highlighted,
+      since the app tells people plainly when no account exists), reset completed, and password changed.
+      It records the time, the account's email, a short detail, the IP and the browser, and **never** a
+      password, token or link.
+    - **Why separate from the Audit Log:** the Audit Log is the business record of who did what to HR data,
+      visible to everyone for their own actions and kept 10 days; this is a security trail about accounts and
+      credentials, Admin-only, kept **90 days** (a stale invite or a run of reset requests needs a longer
+      memory). It is not wiped by Clear Database, and events outlive the account they describe.
+    - **Deliberately not built:** failed-login events. They are the noisiest signal (a load test or a
+      forgotten password can produce hundreds), so logging them needs its own throttling; the existing Redis
+      lockout already counts them. A natural next step if you want brute-force visibility.
+
+---
+
 ## 3. Database Schema (Supabase / Postgres)
 
 ### `profiles` (extends `auth.users`)
@@ -258,6 +283,14 @@ practice, so the invariant is now enforced at the database level too, not just i
 
 One entry per employee per day (unique constraint). Unlike every other approval flow in this app,
 only **Admin** may approve/reject — HR can view all entries but not act on them.
+
+### `auth_events` (migration 0020)
+`id`, `event` (`signup_requested`, `signup_approved`, `signup_rejected`, `invite_sent`, `invite_resent`,
+`password_set`, `password_reset_requested`, `password_reset_unknown_email`, `password_reset_completed`,
+`password_changed`), `user_id` (nullable, set null when the account is deleted), `email` (snapshot),
+`actor_id` (who did it when it wasn't the account holder), `detail` (≤ 200), `ip`, `user_agent`, `created_at`.
+RLS: **select for Admin only**, **no insert/update/delete policy** (written through `lib/auth-events.ts` with
+the service role; pruned by the daily cron after 90 days).
 
 ### `posts`
 | Column | Type | Notes |

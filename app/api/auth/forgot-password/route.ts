@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAuthEvent } from "@/lib/auth-events";
 
 export async function POST(request: Request) {
   const { email } = await request.json();
@@ -21,6 +22,10 @@ export async function POST(request: Request) {
   }
 
   if (!profile) {
+    // The app tells the person plainly that no account exists (it's an internal
+    // tool), so Admin should also be able to see that someone tried - a typo, or
+    // someone probing for addresses.
+    await logAuthEvent({ event: "password_reset_unknown_email", email, request });
     return NextResponse.json(
       { error: "No user found with this email. Please Sign Up first" },
       { status: 404 },
@@ -35,6 +40,8 @@ export async function POST(request: Request) {
   if (resetError) {
     return NextResponse.json({ error: resetError.message }, { status: 500 });
   }
+
+  await logAuthEvent({ event: "password_reset_requested", email, userId: profile.id, request });
 
   return NextResponse.json({ data: { sent: true } });
 }

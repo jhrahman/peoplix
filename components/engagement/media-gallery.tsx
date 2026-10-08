@@ -43,8 +43,10 @@ export function MediaGallery({
         playsInline
         aria-label="Video attached to this post"
         className={cn(
-          "w-full rounded-xl bg-black/90",
-          compact ? "max-h-44 max-w-[16rem]" : "max-h-64 max-w-md",
+          "block w-full rounded-xl bg-black/90",
+          // Post media sits centred in its card; comment media stays left, under
+          // the comment it belongs to, like a chat message.
+          compact ? "max-h-44 max-w-[16rem]" : "mx-auto max-h-64 max-w-md",
         )}
         data-testid={`post-video-${postId}`}
       />
@@ -60,6 +62,7 @@ export function MediaGallery({
         className={cn(
           "grid gap-1.5 overflow-hidden rounded-xl",
           media.length > 1 ? "w-full max-w-sm grid-cols-2" : "w-fit max-w-full",
+          !compact && "mx-auto",
         )}
         data-testid={`post-images-${postId}`}
       >

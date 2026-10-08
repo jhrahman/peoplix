@@ -73,6 +73,12 @@ Peoplix is a role-based HR management web app. Full plan: [hr-app-plan.md](hr-ap
   `lib/engagement-audit.ts` (posts, pins, comments, reactions, votes, wishes, card comments/reactions,
   deletes by anyone). A new engagement route needs its own line there with a readable message; skip
   only no-ops (re-adding a reaction you already have). Never put a date of birth in a message.
+- **Account security events (`auth_events`) are Admin-only, append-only, and secret-free.** Any route that
+  invites, approves, resets, or sets/changes a password must call `logAuthEvent()` (`lib/auth-events.ts`)
+  *after* it succeeds. Never put a password, token, reset link, or `action_link` in an event. There is
+  deliberately no insert/update/delete policy, so not even an Admin can edit the trail. This is separate from
+  `audit_logs` on purpose (different audience, 90-day vs 10-day retention). Account status on the
+  `/account-activity` page is derived live (`lib/account-status.ts`); don't store a copy of it.
 - **`profiles.role` can't be changed by a non-staff user** (trigger in `0018`). Don't loosen it, and
   remember `profiles` is user-writable by its owner, so any new column on it needs the same thought.
 - **Destructive confirm buttons use `variant="destructive-solid"`**, never

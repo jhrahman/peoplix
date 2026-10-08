@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureLeaveBalance } from "@/lib/leave";
 import { logAudit } from "@/lib/audit";
+import { logAuthEvent } from "@/lib/auth-events";
 import type { SignupRequest } from "@/lib/types";
 
 export async function PATCH(
@@ -96,6 +97,15 @@ export async function PATCH(
       });
       if (resetError) {
         console.error("Failed to send password setup email:", resetError.message);
+      } else {
+        await logAuthEvent({
+          event: "invite_sent",
+          email: existing.email,
+          userId,
+          actorId: auth.profile.id,
+          detail: `Invite sent after ${auth.profile.full_name} approved the request`,
+          request,
+        });
       }
     }
 
@@ -109,6 +119,14 @@ export async function PATCH(
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 400 });
     }
+
+    await logAuthEvent({
+      event: status === "approved" ? "signup_approved" : "signup_rejected",
+      email: existing.email,
+      actorId: auth.profile.id,
+      detail: `${status === "approved" ? "Approved" : "Rejected"} by ${auth.profile.full_name}`,
+      request,
+    });
 
     await logAudit({
       actorId: auth.profile.id,

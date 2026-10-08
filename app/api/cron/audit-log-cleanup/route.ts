@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { auditLogRetentionCutoffIso } from "@/lib/audit";
+import { AUTH_EVENT_RETENTION_DAYS } from "@/lib/auth-events";
 
 // Hit daily by Vercel Cron (see vercel.json). Vercel signs cron requests with
 // an `Authorization: Bearer ${CRON_SECRET}` header when CRON_SECRET is set on
@@ -37,7 +38,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: notificationsError.message }, { status: 500 });
   }
 
+  // Account security events are kept longer than the business audit log.
+  const eventCutoff = new Date(Date.now() - AUTH_EVENT_RETENTION_DAYS * 86_400_000).toISOString();
+  const { error: eventsError, count: eventsDeleted } = await admin
+    .from("auth_events")
+    .delete({ count: "exact" })
+    .lt("created_at", eventCutoff);
+
+  if (eventsError) {
+    return NextResponse.json({ error: eventsError.message }, { status: 500 });
+  }
+
   return NextResponse.json({
-    data: { deleted: count ?? 0, notificationsDeleted: notificationsDeleted ?? 0 },
+    data: {
+      deleted: count ?? 0,
+      notificationsDeleted: notificationsDeleted ?? 0,
+      authEventsDeleted: eventsDeleted ?? 0,
+    },
   });
 }
