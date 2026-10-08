@@ -14,8 +14,8 @@ Note: Use only test/sandbox accounts when executing these cases. Do not record r
 | 4 | Submit the form with an invalid email format | Email: `notanemail`, Password: `anything123` | Browser's native email-format validation blocks submission |
 | 5 | Submit the form with a registered email and wrong password | Email: a valid employee account email, Password: `WrongPassword!1` | Form shows an inline error message; user remains on `/login` |
 | 6 | Submit the form with an email that has never been registered | Email: `nonexistent.user@example.com`, Password: `AnyPassword1!` | Form shows an inline error message (generic, does not confirm whether the account exists); user remains on `/login` |
-| 7 | Submit the form with a valid Employee account's correct credentials | Email/password of a valid Employee test account | User is redirected to `/` (dashboard); sidebar shows Employee-level navigation only (no Employees page link) |
-| 8 | Submit the form with a valid HR account's correct credentials | Email/password of a valid HR test account | User is redirected to `/` (dashboard); sidebar includes Employees page link |
+| 7 | Submit the form with a valid Employee account's correct credentials | Email/password of a valid Employee test account | User is redirected to `/` (dashboard); sidebar shows Employee-level navigation only (no Employees page link), including the Engagement link; the navbar shows the notification bell |
+| 8 | Submit the form with a valid HR account's correct credentials | Email/password of a valid HR test account | User is redirected to `/` (dashboard); sidebar includes Employees page link, the Engagement link, and the notification bell |
 | 9 | Submit the form with a valid Admin account's correct credentials | Email/password of a valid Admin test account | User is redirected to `/` (dashboard); sidebar includes Employees page link. Settings shows the "Clear Database" (Danger Zone) control **only** if this Admin is the designated System Admin account — any other Admin account does not see it at all (not even disabled) |
 | 10 | While the sign-in request is in flight, observe the submit button | N/A | Button text changes to "Signing in..." and is disabled, preventing duplicate submissions |
 | 11 | Type a password into the Password field | Any string | Characters are masked (rendered as dots/asterisks), not shown in plain text |
@@ -38,3 +38,13 @@ public-facing product.
 | 19 | Complete a real password reset via the emailed link (if mailbox access is available) | Follow the link to `/reset-password` | Reset-password page loads, allows setting a new password, and on success signs the user in with the new password |
 | 19a | As Admin, check the Audit Log after an existing employee (one who has logged in before) completes a genuine forgot-password reset | See [`11-audit-log.md`](11-audit-log.md) | An ordinary password-update entry appears for that employee — **not** a "Joined" entry, since "Joined" only fires the very first time an account ever sets a password |
 | 20 | While filling in the forgot-password dialog, submit it | Valid registered email | Only the dialog's own "Send reset link" button shows "Sending..."; the login page's own "missing email or phone" error must **not** appear — the two forms are independent despite the dialog being rendered inside the login page |
+
+## Logo navigation
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 21 | Click the Peoplix logo at the top of the sidebar while on any other page | Desktop width, e.g. on `/leave` or `/engagement` | Browser navigates to `/` (the dashboard); the logo shows a subtle fade on hover and a focus ring when tabbed to |
+| 22 | Click the Peoplix logo in the top navbar on a phone-sized screen | 375px width, on any page | Browser navigates to `/`; the menu button next to it still opens the drawer and is unaffected |
+| 23 | Click the logo while already on the dashboard | On `/` | Page stays on `/` with no error |
+| 24 | Inspect the logo with a screen reader or the accessibility tree | Any dashboard page | It is exposed as a link named "Peoplix home" |
+| 25 | Check the logo on the login, signup, and reset-password pages | Logged out | The logo is plain branding there (not a link), since `/` would only redirect back to login |

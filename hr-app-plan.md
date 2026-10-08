@@ -79,6 +79,97 @@ requests right now," not "did you come from the dashboard."
    signup-request/profile/password/account actions. Every role sees their own entries; Admin only
    sees everyone's. 10-day retention (auto-deleted by a daily cron), to stay within Supabase's
    free-tier storage cap. See §10.
+10. **Employee engagement** *(ad-hoc, post-v1)* — a `/engagement` page: company feed, announcements
+    and a celebrations card.
+    - **Post types:** plain posts, **kudos** (recognize a colleague for a company value), and
+      **polls** (2–5 options, one changeable vote each, non-anonymous). Filter chips switch between them.
+    - **Announcements:** Admin/HR only; shown in their own column (tab on mobile); up to 3 can be
+      **pinned** to the top.
+    - **Reactions:** Discord-style on posts *and* comments — any number of different emojis per
+      person, from a curated ~80-emoji workplace set (searchable picker with group tabs, skin tones for hands and
+      people, hover shows who reacted). Emojis a device cannot draw are left out of its picker and shown by
+      name on chips, instead of as empty boxes.
+    - **Attachments:** up to 4 photos (≤ 3 MB each) or 1 video (≤ 20 MB) per post. Uploaded straight
+      from the browser to Supabase Storage (Vercel's request-body limit would reject a 20 MB video
+      sent through an API route); two buckets, `post-images` and `post-videos`, so Storage itself
+      enforces each size/type cap in addition to the client's friendly validation messages.
+    - **@tags:** typing `@` in a post or comment suggests colleagues by first or last name. Stored
+      as `@[Name](profile-id)` so tags survive renames; up to 5 per item. There are **no
+      notifications** yet — a tag is highlighted (more strongly for the person tagged) but nobody is alerted.
+    - **Notifications:** a bell in the navbar (unread badge + dropdown of the latest 8) and a full
+      `/notifications` page. Notified: the **tagged person** (in a post, announcement, poll, kudos
+      message or comment), the colleague receiving kudos, and a **post's author when someone else
+      comments** (one alert per commenter until it's read, so a chatty thread doesn't flood the
+      bell). No broadcast, and not even Admin can read someone else's. Beyond the basics: unread
+      comment notifications about one post **group** into a single row, the page has **All / Unread**
+      tabs, each row can be marked read/unread or removed, and a **toast** names who did what when a
+      new one arrives while the app is open. Reactions on your posts and comments notify you too, with
+      the same safeguards (grouping, one alert per person while unread, withdrawn if the reaction is
+      taken back). Deliberately not built: email/push (external services) and per-category mute settings. Clicking one opens a page showing only that post
+      (`/engagement/posts/{id}`, comments open, the tagged comment highlighted). Written
+      server-side with the service-role client (no insert policy, so they can't be forged); the
+      badge is polled once a minute while the tab is visible and on focus rather than using
+      Supabase Realtime, to keep connections and moving parts down on the free tier. Deleted with
+      their post/comment and by the daily cron after 30 days.
+    - **Keeping a busy feed manageable:** search over posts and announcements (debounced,
+      case-insensitive); a **Mentions** filter for posts that tag you; a **New** badge on posts
+      made by others since your last visit (plus a count on the Announcements tab) — "last visit"
+      is a per-user cookie written when you leave the page, so the server render and client agree;
+      pinned announcements stay on top; image/video previews are compact thumbnails, with the full
+      size in a viewer on click. Not built (see the notes in the PR/chat): notifications, and
+      auto-archiving old announcements.
+    - **Profile preview:** hovering (or tapping, or focusing with the keyboard) a tagged colleague, or
+      a kudos recipient, shows a small card with their photo, name, designation, email and a 🌴 if they
+      are on approved leave today. It never includes date of birth or phone.
+    - **Birthdays & wishes:** every employee can add their date of birth in **Settings**. It is
+      deliberately stored in its own table, `employee_birthdays`, readable only by its owner,
+      **not** as a column on `profiles` (which every signed-in user can read, so a column there would
+      expose everyone's birthday through the API even if the Directory page hid it). The Directory
+      never shows it. Teammates see only the day and month, computed server-side with the service
+      role, and only for people who left "Let teammates celebrate my birthday" on; the year never
+      leaves the server. On the day (and up to 3 days after, for belated wishes) colleagues can sign a
+      shared card with a quick or custom message (200 characters, one wish each, removable by the
+      sender or an Admin); the person is notified and can open their card from the notification.
+    - **Work-anniversary milestones:** 3, 5 and 10 years, then every 5 years, appear in Celebrations
+      and can be wished the same way. Other anniversaries are shown as a heads-up only. Wishes are
+      created through the API (no insert policy) because checking "is it really their day" needs the
+      private birthday table.
+    - **Card conversation:** a birthday or anniversary card is more than a list of wishes. People can
+      react to the card and comment on it, with @tags like any post. Tagged people are notified, and so is
+      the celebrant (who can reply too). Cards take comments and reactions on the day and for 3 days
+      after, then stay readable but read-only. Card comments and reactions are keyed by
+      (celebrant, occasion, day), written only by the API after it verifies the celebration is real,
+      and notifications about a card carry the celebrant's id so a tagged colleague opens the right card.
+    - **A card for every celebration:** birthdays, every work anniversary (3, 5, 10 and every 5th year
+      are "milestones", all other years are ordinary anniversaries), and new joiners all get the same
+      card with wishes, comments, reactions and notifications to the person it is for. It was
+      originally limited to birthdays and milestones, which left ordinary anniversaries and new joiners
+      with nothing to click. Cards open on the day (a welcome card on the day someone joins) and stay
+      open 3 days (welcome cards 14); upcoming ones show "Opens on the day".
+    - **Comment attachments:** every comment box (post threads and cards) takes one small attachment: a
+      photo up to **1 MB**, a clip up to **5 MB**, or a **GIF**. Photos and clips upload straight to
+      Storage (buckets `comment-images`, `comment-videos`, whose caps enforce the limits); a GIF is only
+      a link, accepted only from GIPHY's own hosts. A comment can be just an attachment. Files are
+      removed when the comment, its post, or the account is deleted, or the wipe runs.
+    - **GIF search:** `GET /api/gifs` proxies **GIPHY** (Tenor's API was shut down on 30 June 2026) so the
+      key stays server-side. The free key allows about 100 calls an hour, so results are cached for an
+      hour; it needs `GIPHY_API_KEY`, and without it the picker says search isn't set up while the rest of
+      the comment box keeps working. Requires the "Powered by GIPHY" credit, which the picker shows.
+    - **Joining date:** every employee can set their own joining date in **Settings**, with a note to
+      ask HR for the confirmed date. Anniversaries and the 3/5/10(+5) year milestones are counted from it
+      (it defaults to the day the account was created, which is why milestones need this). The change is
+      audit-logged with the old and new date.
+    - **Small UI rules:** the profile preview has a copy-email button; destructive confirmations
+      (delete post, delete account, clear database, ...) are a solid red in both themes via the
+      `destructive-solid` button variant and `--destructive-foreground` token.
+    - **Celebrations:** work anniversaries in the next 7 days and people who joined in the last 14,
+      derived from `profiles.joined_date`.
+    - **Deleting:** everyone can delete their own posts and comments; only **Admin** can delete
+      someone else's (not HR). Deleting a post also deletes its Storage files.
+    - **Kept light for the free tier:** no editing, no Supabase Realtime; the feed is paged 10 at a
+      time with one query per page, and comments load only when a thread is opened. Storage is the
+      real budget (free tier = 1 GB total), so every path that removes posts (delete, account
+      deletion, Clear Database) also removes their files.
 
 ---
 
@@ -168,6 +259,82 @@ practice, so the invariant is now enforced at the database level too, not just i
 One entry per employee per day (unique constraint). Unlike every other approval flow in this app,
 only **Admin** may approve/reject — HR can view all entries but not act on them.
 
+### `posts`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| author_id | uuid | FK → profiles (cascade) |
+| content | text | 1–2000 characters (`CHECK`) |
+| is_announcement | boolean | only Admin/HR may insert `true` (RLS) |
+| created_at | timestamptz | |
+
+### `post_comments`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| post_id | uuid | FK → posts (cascade) |
+| author_id | uuid | FK → profiles (cascade) |
+| content | text | 1–500 characters (`CHECK`) |
+| created_at | timestamptz | |
+
+### `post_reactions` / `comment_reactions`
+| Column | Type | Notes |
+|---|---|---|
+| post_id / comment_id | uuid | FK (cascade), PK part |
+| user_id | uuid | FK → profiles (cascade), PK part |
+| emoji | text | PK part; 1–16 chars. The allowed set lives in `lib/engagement.ts`, not the DB |
+| created_at | timestamptz | |
+
+### `posts` additions (migration 0014)
+`kind` (`update`/`kudos`/`poll`), `kudos_recipient_id`, `kudos_value`, `is_pinned`. CHECK constraints
+tie these together (a kudos always has a recipient other than the author and a value; announcements
+are always plain updates; only announcements can be pinned). `is_pinned` is the only column
+`authenticated` may UPDATE (column-level grant) and only Admin/HR pass the policy.
+
+### `employee_birthdays` / `celebration_wishes` / notifications additions (migration 0017)
+`employee_birthdays(employee_id PK, date_of_birth, share_with_team, updated_at)`: RLS select/insert/update/delete
+**own row only**; nobody else, including Admin, can read it through the API.
+`celebration_wishes(sender_id, recipient_id, occasion birthday|milestone, occasion_date, years, message ≤ 200)`:
+unique per sender + recipient + occasion + day, readable by all signed-in users, deletable by the sender or an
+Admin, **no insert policy** (written by the API after verifying the occasion).
+`notifications` gains `emoji` and `occasion_date`, `post_id` becomes nullable (wishes point at a day), and the
+`type` / `context` checks allow `reaction`, `wish`, `birthday`, `milestone`.
+
+### Migration 0019: cards for every celebration, and comment attachments
+`celebration_wishes`, `celebration_comments`, `celebration_reactions` accept the occasions `birthday`,
+`milestone`, `anniversary` and `new_joiner` (years are recorded for the two work-anniversary kinds);
+`notifications.context` accepts the same. `post_comments` and `celebration_comments` gain
+`media_kind` (`image`/`video`/`gif`), `media_path`, `media_url`, `media_mime`, `media_size`, with CHECKs
+for the shape and the size caps; their text check now allows an empty comment when there is an
+attachment. Two new public-read buckets, `comment-images` (1 MB) and `comment-videos` (5 MB).
+
+### `celebration_comments` / `celebration_reactions` (migration 0018)
+Comments (≤ 500 displayed characters) and emoji reactions on a birthday / anniversary card, keyed by
+`(recipient_id, occasion, occasion_date)`. Readable by all signed-in users; deletable by their author
+(Admin for comments); **no insert policy** (created by the API after `verifyOccasion`). `notifications`
+gains `occasion_owner_id` (whose card), and a notification now points either at a post or at a card.
+
+**Role protection (0018):** a trigger stops anyone who is not HR/Admin from changing a `profiles.role`.
+Before it, the `profiles` update policy let any employee send `{ "role": "admin" }` for their own row
+through the database REST endpoint.
+
+### `post_media`
+`post_id`, `kind` (`image`/`video`), `path` (unique, in Storage), `mime_type`, `size_bytes`
+(CHECK: images ≤ 3 MB, videos ≤ 20 MB), `position` 0–3. Insert only on your own post; removed by cascade.
+
+### `post_poll_options` / `post_poll_votes`
+Options (`label` ≤ 100 chars, `position` 0–4) and one vote per `(post_id, user_id)`. Votes reference
+`(option_id, post_id)` together, so a vote can't point at another poll's option. Votes are readable by
+everyone (non-anonymous); you can insert/update only your own.
+
+All of the engagement tables are readable by every authenticated user. Posts and comments can be
+inserted only as yourself and deleted only by their author or an Admin; content is never edited.
+Reactions and votes are strictly self-service.
+
+**Storage buckets** (`post-images`, `post-videos`): public read (object names are random UUIDs under
+the uploader's id); writes and deletes only inside your own `{user-id}/` folder. Admin moderation
+deletes go through the service-role client in the API.
+
 **Row Level Security (RLS):** enabled on all tables. Employees can only read/write their own rows; HR/Admin roles get broader policies for approvals, editing holidays, and managing employee records.
 
 ---
@@ -243,7 +410,9 @@ CLAUDE.md           → project conventions for AI-assisted development
     own account from **Settings** (`DELETE /api/account`) — a confirm-phrase dialog matching the
     Danger Zone pattern, showing a "Deleting Account..." state while in flight. The route deletes the
     Supabase Auth user via the Admin API, which cascades to `profiles` and all FK'd tables
-    (`leave_requests`, `leave_balances`, `attendance`, `overtime_requests`), then signs out and
+    (`leave_requests`, `leave_balances`, `attendance`, `overtime_requests`, `posts`,
+    `post_comments`, `post_reactions` and the rest of the engagement tables; their uploaded
+    photos/videos are deleted from Storage too), then signs out and
     redirects to `/login`. The same protected-employees allowlist (`lib/protected-employees.ts`) used
     to stop Admin from deleting certain accounts also blocks those accounts from deleting themselves.
 
@@ -315,7 +484,7 @@ A **Settings → Danger Zone** section with a "Clear Database" button.
   re-checks `role === 'admin'` from the session, **then** additionally re-checks `isSystemAdmin()` —
   the hidden UI is a UX nicety, not the actual security boundary.
 - **Confirmation flow:** clicking opens a confirm dialog requiring the admin to type a confirmation phrase (`DELETE ALL DATA`) before the action fires, to prevent accidental clicks.
-- **Scope:** truncates `leave_requests`, `leave_balances`, `holidays`, `attendance`, and `overtime_requests`. `profiles` and Supabase Auth users are never touched — no accounts are affected.
+- **Scope:** truncates `leave_requests`, `leave_balances`, `holidays`, `attendance`, `overtime_requests`, and `posts` (which cascades to comments, reactions, poll data and media rows; the uploaded files are removed from Storage too). `profiles` and Supabase Auth users are never touched — no accounts are affected.
 - **Uses the service-role client, not the caller's session.** This table list includes `attendance`,
   whose RLS delete policy deliberately only allows deleting your own **today's** row (history can't
   be deleted by anyone, including Admin — see §5 module notes). Running the wipe through the
@@ -341,7 +510,12 @@ A `/audit-log` page, positioned right before Settings in the nav, visible to eve
 - **What's logged:** leave apply/self-edit/cancel/approve/reject, overtime log/self-edit/cancel/
   approve/reject, attendance check-in/checkout/override/delete, employee create/update/delete,
   signup-request approve/reject, profile self-edit, profile photo upload/change/delete, password
-  change, self-account deletion, and a new employee **joining** (see below). Each entry records the
+  change, self-account deletion, **every action on the Engagement page** (posts, announcements,
+  kudos, polls, pins, comments, reactions, poll votes, wishes, and card comments/reactions, plus
+  deletes by the author or an Admin; no-ops like re-adding a reaction you already have are not
+  logged) with a readable message such as `Reacted 👍 to Jane Doe's post` or `Voted “Pizza” in
+  Jane Doe's poll`, joining-date and date-of-birth changes (a birthday is recorded as changed, never
+  with the date), and a new employee **joining** (see below). Each entry records the
   actor's name/email (snapshotted at write time, so it still reads correctly even after the profile
   is later edited or the account deleted), a timestamp, an `action`
   (`create`/`update`/`delete`/`cancel`/`approve`/`reject`/`joined`), an `entity`, and a short
@@ -465,13 +639,13 @@ free-tier Supabase project from taking repeated hits for the same data.
   - Holidays list — 300s TTL, via Next's own `unstable_cache`/`revalidateTag` (same mechanism
     already used for the Directory's profile list), not Redis, since Vercel's Data Cache already
     gives this for free and there was no reason to add a second cache for the same shape of data.
-- **What's deliberately not cached:** attendance, leave, and overtime data — these are mutated
+- **What's deliberately not cached:** attendance, leave, overtime, and engagement feed data — these are mutated
   constantly and read for correctness (e.g. "did I already check in today"), so staleness would
   cost more than the caching would save. Same reasoning for the Directory's "on leave today"
   indicator (§2) — it's intentionally uncached, since a stale approval status would just be wrong,
   not slow.
 - **Rate limiting:** `@upstash/ratelimit`, sliding window, 10 requests per 10 seconds per employee,
-  applied to the heaviest write endpoints — attendance check-in, leave create, overtime create.
+  applied to the heaviest write endpoints — attendance check-in, leave create, overtime create, engagement post create, and comment create.
   Returns a `429` under burst load instead of letting a spike of concurrent users hammer Supabase's
   free-tier Postgres/Auth API directly. Same fail-open behavior as the cache: no Redis configured
   means no rate limiting, never a blocked request.

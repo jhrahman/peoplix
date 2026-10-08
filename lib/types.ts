@@ -1,3 +1,5 @@
+import type { CommentMedia } from "@/lib/comment-media";
+
 export type UserRole = "admin" | "hr" | "employee";
 
 export type LeaveType = "casual" | "sick" | "annual";
@@ -120,7 +122,10 @@ export type AuditEntity =
   | "signup_request"
   | "profile"
   | "password"
-  | "account";
+  | "account"
+  | "post"
+  | "comment"
+  | "wish";
 
 export type AuditLog = {
   id: string;
@@ -131,4 +136,99 @@ export type AuditLog = {
   entity: AuditEntity;
   comment: string;
   created_at: string;
+};
+
+export type PostKind = "update" | "kudos" | "poll";
+
+export type MediaKind = "image" | "video";
+
+export type PostAuthor = Pick<Profile, "id" | "full_name" | "designation" | "avatar_url">;
+
+// Everyone can already read every profile (Team Directory), so email is fair
+// game for the hover preview. Date of birth is deliberately NOT here.
+export type PersonOption = PostAuthor & Pick<Profile, "email">;
+
+// One emoji on a post or comment, already aggregated server-side so the client
+// never receives per-employee reaction rows. `reactors` holds up to 9 *other*
+// people's names (for the hover label); the caller is represented by `mine`.
+export type ReactionSummary = {
+  emoji: string;
+  count: number;
+  mine: boolean;
+  reactors: string[];
+};
+
+export type PostMedia = {
+  id: string;
+  kind: MediaKind;
+  url: string;
+  mime_type: string;
+  size_bytes: number;
+};
+
+export type PollOption = { id: string; label: string; votes: number };
+
+// A post as the engagement feed renders it.
+export type FeedPost = {
+  id: string;
+  content: string;
+  kind: PostKind;
+  is_announcement: boolean;
+  is_pinned: boolean;
+  created_at: string;
+  author: PostAuthor | null;
+  kudos: { recipient: PostAuthor; value: string } | null;
+  media: PostMedia[];
+  poll: { options: PollOption[]; my_vote: string | null; total_votes: number } | null;
+  reactions: ReactionSummary[];
+  comment_count: number;
+};
+
+export type PostComment = {
+  id: string;
+  post_id: string;
+  content: string;
+  created_at: string;
+  author: PostAuthor | null;
+  reactions: ReactionSummary[];
+  media: CommentMedia | null;
+};
+
+export type NotificationType = "mention" | "kudos" | "comment" | "reaction" | "wish";
+
+export type NotificationContext =
+  | "post"
+  | "announcement"
+  | "poll"
+  | "kudos"
+  | "comment"
+  | "birthday"
+  | "milestone"
+  | "anniversary"
+  | "new_joiner";
+
+export type AppNotification = {
+  id: string;
+  type: NotificationType;
+  context: NotificationContext;
+  // Null only for wishes, which point at a day instead of a post.
+  post_id: string | null;
+  comment_id: string | null;
+  emoji: string | null;
+  occasion_date: string | null;
+  // The celebrant, for notifications about a birthday / anniversary card.
+  occasion_owner_id: string | null;
+  preview: string;
+  read_at: string | null;
+  created_at: string;
+  actor: PostAuthor | null;
+};
+
+// A comment on a birthday / work-anniversary card.
+export type CardComment = {
+  id: string;
+  content: string;
+  created_at: string;
+  author: PostAuthor | null;
+  media: CommentMedia | null;
 };

@@ -66,7 +66,7 @@ export function DeleteAttendanceDialog({ record }: { record: Attendance }) {
               handleDelete();
             }}
             disabled={loading}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            variant="destructive-solid"
             data-testid={`attendance-delete-confirm-${record.id}`}
           >
             {loading ? "Deleting..." : "Delete"}

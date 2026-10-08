@@ -40,3 +40,11 @@ Access: Every role (unlike the Employees page, which is Admin/HR only).
 | 16 | Clear the search box after searching | Delete all text | Full employee list reappears |
 | 17 | Confirm search does not trigger a network request | Type into the search box while watching dev tools' network tab | No new HTTP request fires — filtering happens entirely client-side against the already-loaded list |
 | 18 | Type text into the search box, then click the X (clear) icon inside the box | Any search query | Icon is only visible while there's text; clicking it instantly clears the box and the full employee list reappears immediately (no delay, no network request) |
+
+## Birthdays stay private
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 19 | Open the Directory after several employees have saved their date of birth | Any role | Columns remain Name, Designation, Department, Email, Phone; no birthday, age, or date column exists |
+| 20 | Search the Directory for a birthday | e.g. "March", "1994", "15" | No results are produced by the search (it only matches name, department, designation, and email) |
+| 21 | Hover or click a tagged colleague elsewhere, then compare with the Directory | Hover preview vs Directory row | Neither shows a date of birth |

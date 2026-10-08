@@ -1,15 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-export function CopyEmailButton({ email }: { email: string }) {
+export function CopyEmailButton({
+  email,
+  testId = "directory-copy-email",
+}: {
+  email: string;
+  testId?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(email);
+    try {
+      await navigator.clipboard.writeText(email);
+    } catch {
+      // Clipboard access is blocked on insecure origins and in some embedded views.
+      toast.error("Couldn't copy. Select the address and copy it manually.");
+      return;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
@@ -24,7 +37,7 @@ export function CopyEmailButton({ email }: { email: string }) {
           className="h-6 w-6 shrink-0"
           onClick={handleCopy}
           aria-label={`Copy ${email}`}
-          data-testid="directory-copy-email"
+          data-testid={testId}
         >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-primary" />

@@ -25,5 +25,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ data: { deleted: count ?? 0 } });
+  // Notifications ride on the same daily job: read or not, anything older
+  // than 30 days is stale, and this keeps the table small on the free tier.
+  const notificationCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { error: notificationsError, count: notificationsDeleted } = await admin
+    .from("notifications")
+    .delete({ count: "exact" })
+    .lt("created_at", notificationCutoff);
+
+  if (notificationsError) {
+    return NextResponse.json({ error: notificationsError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    data: { deleted: count ?? 0, notificationsDeleted: notificationsDeleted ?? 0 },
+  });
 }

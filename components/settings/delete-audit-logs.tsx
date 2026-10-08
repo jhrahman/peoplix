@@ -80,7 +80,7 @@ export function DeleteAuditLogs() {
                   handleClear();
                 }}
                 disabled={loading}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                variant="destructive-solid"
                 data-testid="delete-audit-logs-confirm-button"
               >
                 {loading ? "Deleting..." : "Delete All"}

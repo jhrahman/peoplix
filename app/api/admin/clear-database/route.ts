@@ -2,14 +2,26 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSystemAdmin } from "@/lib/protected-employees";
+import { removeCommentMediaObjects, removeMediaObjects } from "@/lib/engagement-storage";
+import type { MediaKind } from "@/lib/types";
 
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+// [table, a column every row has] - reactions have no id, hence the column.
 const TABLES = [
-  "leave_requests",
-  "leave_balances",
-  "holidays",
-  "attendance",
-  "overtime_requests",
+  ["leave_requests", "id"],
+  ["leave_balances", "id"],
+  ["holidays", "id"],
+  ["attendance", "id"],
+  ["overtime_requests", "id"],
+  // post_comments, post_reactions, poll data and media rows go with their posts
+  // (on delete cascade).
+  ["posts", "id"],
+  // Celebration cards hang off people, not posts, so they are wiped explicitly.
+  ["celebration_wishes", "id"],
+  ["celebration_comments", "id"],
+  ["celebration_reactions", "user_id"],
+  // Wish notifications point at a day rather than a post, so they don't cascade away.
+  ["notifications", "id"],
 ] as const;
 
 export async function POST() {
@@ -31,8 +43,24 @@ export async function POST() {
   // for this danger-zone action is the isSystemAdmin gate above, not RLS.
   const admin = createAdminClient();
 
-  for (const table of TABLES) {
-    const { error } = await admin.from(table).delete().neq("id", NIL_UUID);
+  // Post attachments live in Storage, not in the tables being wiped - collect
+  // their paths first, since the rows (and the paths) are gone after the wipe.
+  const [{ data: media }, { data: postCommentFiles }, { data: cardCommentFiles }] = await Promise.all([
+    admin.from("post_media").select("kind, path").returns<{ kind: MediaKind; path: string }[]>(),
+    admin
+      .from("post_comments")
+      .select("media_kind, media_path")
+      .not("media_kind", "is", null)
+      .returns<{ media_kind: string | null; media_path: string | null }[]>(),
+    admin
+      .from("celebration_comments")
+      .select("media_kind, media_path")
+      .not("media_kind", "is", null)
+      .returns<{ media_kind: string | null; media_path: string | null }[]>(),
+  ]);
+
+  for (const [table, column] of TABLES) {
+    const { error } = await admin.from(table).delete().neq(column, NIL_UUID);
     if (error) {
       return NextResponse.json(
         { error: `Failed clearing ${table}: ${error.message}` },
@@ -40,6 +68,9 @@ export async function POST() {
       );
     }
   }
+
+  await removeMediaObjects(media ?? []);
+  await removeCommentMediaObjects([...(postCommentFiles ?? []), ...(cardCommentFiles ?? [])]);
 
   // leave_balances was just wiped along with leave_requests - re-seed a fresh
   // default balance for every surviving employee so the admin's "All balances"
@@ -70,5 +101,5 @@ export async function POST() {
     }
   }
 
-  return NextResponse.json({ data: { cleared: TABLES } });
+  return NextResponse.json({ data: { cleared: TABLES.map(([table]) => table) } });
 }

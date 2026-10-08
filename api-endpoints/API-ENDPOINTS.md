@@ -102,7 +102,8 @@ Do not put real passwords, service-role keys, or production secrets in this file
 - `OvertimeStatus` = `"pending" | "approved" | "rejected"`
 - `SignupRequestStatus` = `"pending" | "approved" | "rejected"`
 - `AuditAction` = `"create" | "update" | "delete" | "cancel" | "approve" | "reject" | "joined"`
-- `AuditEntity` = `"leave_request" | "overtime_request" | "attendance" | "employee" | "signup_request" | "profile" | "password" | "account"`
+- `AuditEntity` = `"leave_request" | "overtime_request" | "attendance" | "employee" | "signup_request" | "profile" | "password" | "account" | "post" | "comment" | "wish"`
+- `ReactionType` = `"like" | "love" | "celebrate" | "laugh" | "clap"`
 
 ---
 
@@ -425,8 +426,8 @@ This route serves two different actions, disambiguated by the request body shape
 ### POST `/api/admin/clear-database`
 - **Auth**: **A single designated System Admin account only** — stricter than a plain `role === 'admin'` check. The route first requires `role === 'admin'` (`requireRole`), then additionally checks the caller's email against `isSystemAdmin()` (`lib/protected-employees.ts`) and rejects any other Admin, HR, or Employee account. The Danger Zone UI is not merely disabled for everyone else — it's not rendered in the DOM at all.
 - **Body**: none
-- **Behavior**: Permanently deletes **all rows** from `leave_requests`, `leave_balances`, `holidays`, `attendance`, and `overtime_requests`, using the service-role client rather than the caller's own session. This matters because a couple of these tables (notably `attendance`, which only allows deleting *your own, today's* row under normal RLS — see §4) would otherwise silently leave most rows behind, since a restrictive RLS policy just matches zero rows rather than erroring. The service-role client bypasses that entirely for this one, tightly-gated action. Afterward, it re-seeds a fresh default `leave_balances` row (10/14/15 days, 0 used) for every remaining employee, so the balances view is immediately clean instead of repopulating one employee at a time as each person happens to revisit `/leave`. Never touches `profiles` or Supabase Auth users — no accounts are affected.
-- **Success (200)**: `{ "data": { "cleared": ["leave_requests", "leave_balances", "holidays", "attendance", "overtime_requests"] } }`
+- **Behavior**: Permanently deletes **all rows** from `leave_requests`, `leave_balances`, `holidays`, `attendance`, `overtime_requests`, and `posts` (whose comments and reactions cascade), using the service-role client rather than the caller's own session. This matters because a couple of these tables (notably `attendance`, which only allows deleting *your own, today's* row under normal RLS — see §4) would otherwise silently leave most rows behind, since a restrictive RLS policy just matches zero rows rather than erroring. The service-role client bypasses that entirely for this one, tightly-gated action. Afterward, it re-seeds a fresh default `leave_balances` row (10/14/15 days, 0 used) for every remaining employee, so the balances view is immediately clean instead of repopulating one employee at a time as each person happens to revisit `/leave`. Never touches `profiles` or Supabase Auth users — no accounts are affected.
+- **Success (200)**: `{ "data": { "cleared": ["leave_requests", "leave_balances", "holidays", "attendance", "overtime_requests", "posts"] } }`
 - **Errors**:
   - `401` — not logged in
   - `403` — logged in but not the System Admin account (includes every other Admin and HR account)
@@ -719,6 +720,243 @@ window and returns `{ "data": { "deleted": <count> } }`.
 
 ---
 
+## 13. Engagement — `/api/posts`
+
+Backs the `/engagement` page. A `FeedPost` is:
+```json
+{
+  "id": "uuid",
+  "content": "Great work @[Jane Doe](<profile-uuid>)!",
+  "kind": "update",
+  "is_announcement": false,
+  "is_pinned": false,
+  "created_at": "2026-10-08T09:30:00.000Z",
+  "author": { "id": "uuid", "full_name": "Rahim Uddin", "designation": "Engineer", "avatar_url": null },
+  "kudos": null,
+  "media": [{ "id": "uuid", "kind": "image", "url": "https://…/storage/v1/object/public/post-images/…", "mime_type": "image/png", "size_bytes": 120394 }],
+  "poll": null,
+  "reactions": [{ "emoji": "👍", "count": 3, "mine": true, "reactors": ["Jane Doe", "Anika Rahman"] }],
+  "comment_count": 2
+}
+```
+- `kind` is `"update" | "kudos" | "poll"`. `kudos` is `{ recipient: <author shape>, value }` for kudos posts; `poll` is `{ options: [{ id, label, votes }], my_vote, total_votes }` for polls; both are `null` otherwise.
+- `reactions` are in the order each emoji was first used. `reactors` lists up to 9 *other* people; the caller is represented by `mine`.
+- **Tags:** a tagged colleague is written into `content` as `@[Name](<profile-uuid>)`. The UI shows `@Name` and resolves the *current* name from the id. Limits (2000 / 500 characters) count the displayed `@Name`, not the id.
+- **Reactions** are Discord-style: any number of different emojis per person per item. Only emojis from the curated set in `lib/engagement.ts` (`EMOJI_CATEGORIES`, about 80) are accepted, plus the five skin-tone variants (Unicode modifiers U+1F3FB to U+1F3FF) of the hands and people marked `tone: true`. Anything else, including a skin tone on an emoji that doesn't take one, is rejected with `Unknown emoji`.
+
+### GET `/api/posts`
+- **Auth**: Session required
+- **Query params**:
+  - `type=announcements` (optional) — announcements; omitted → ordinary posts.
+  - `kind=update|kudos|poll` (optional) — filter by kind.
+  - `q` (optional) — case-insensitive text search over the post body (up to 80 characters).
+  - `mentioned=me` (optional) — only posts that tag the caller.
+  - `pinned=false` (optional) — exclude pinned announcements (used to page past the pinned ones the first page already returned).
+  - `before` (optional) — ISO timestamp; returns posts created strictly before it.
+- **Success (200)**: `{ "data": FeedPost[], "has_more": boolean }` — pinned first, then newest first, 10 per page
+- **Errors**: `401`, `500`
+
+### POST `/api/posts`
+- **Auth**: Session required. `is_announcement: true` is **Admin/HR only** (re-checked server-side and by RLS).
+- **Body (JSON)**:
+  ```json
+  {
+    "content": "1-2000 characters (the question, for a poll)",
+    "kind": "update",
+    "is_announcement": false,
+    "kudos_recipient_id": "uuid (kudos only)",
+    "kudos_value": "teamwork | ownership | innovation | extra_mile | helpfulness | customer_focus | learning (kudos only)",
+    "poll_options": ["2 to 5 distinct options, up to 100 characters each (poll only)"],
+    "media": [{ "kind": "image", "path": "<your-user-id>/<file>.png", "mime_type": "image/png", "size_bytes": 120394 }]
+  }
+  ```
+- **Attachments** are uploaded by the client **directly to Supabase Storage first** (bucket `post-images`, max **3 MB**: JPEG/PNG/WebP/GIF; or `post-videos`, max **20 MB**: MP4/WebM/MOV), under a `<your-user-id>/` folder, and then referenced in `media`. A post takes up to **4 photos or 1 video**, not both. Storage enforces the size and type caps itself; this endpoint re-validates the metadata and that every path is inside the caller's own folder. Polls can't have attachments; announcements can't be kudos or polls.
+- **Success (201)**: `{ "data": FeedPost }`
+- **Errors**:
+  - `400` — empty/too long content; unknown kind; attachment too large, wrong type, wrong folder, or a bad photo/video mix; kudos without a valid colleague/value or to yourself; poll without 2–5 distinct options; more than 5 tags or a tagged person who doesn't exist
+  - `401` — not logged in
+  - `403` — `is_announcement: true` from an Employee account
+  - `429` — rate limited (10 requests / 10 s per employee, when Redis is configured)
+  - On any `4xx` after upload, the files referenced in `media` are deleted from Storage.
+
+### PATCH `/api/posts/{id}`
+- **Auth**: **Admin or HR** — pins or unpins an announcement.
+- **Body (JSON)**: `{ "is_pinned": true }`
+- **Success (200)**: `{ "data": { "id": "uuid", "is_pinned": true } }`
+- **Errors**: `400` — not an announcement, or already 3 pinned; `401`; `403`; `404`
+
+### DELETE `/api/posts/{id}`
+- **Auth**: Session required — the post's author, or **Admin** (not HR). Removes the post's comments, reactions, poll data, attachments (rows **and** Storage files).
+- **Success (200)**: `{ "data": { "id": "<deleted-uuid>" } }`
+- **Errors**: `401`; `403` — someone else's post and the caller isn't Admin; `404`
+
+### GET `/api/posts/{id}/comments`
+- **Auth**: Session required
+- **Success (200)**: `{ "data": PostComment[] }` — oldest first, capped at 200; each is `{ id, post_id, content, created_at, author, reactions }`. An unknown post id returns an empty list.
+
+### POST `/api/posts/{id}/comments`
+- **Auth**: Session required
+- **Body (JSON)**: `{ "content": "up to 500 displayed characters, may contain @[Name](uuid) tags; may be empty when media is set", "media": CommentMediaInput | null }`
+- **Attachments**: at most **one per comment**, kept small: a **photo up to 1 MB** (JPEG/PNG/WebP) or a **clip up to 5 MB** (MP4/WebM/MOV), uploaded by the client straight to the `comment-images` / `comment-videos` bucket under `<your-user-id>/` and referenced as `{ "kind": "image" | "video", "path", "mime_type", "size_bytes" }`; or a **GIF** from `GET /api/gifs` referenced as `{ "kind": "gif", "url": "https://media*.giphy.com/..." }`. Only GIPHY's own hosts are accepted for GIF links.
+- **Success (201)**: `{ "data": PostComment }` — a `PostComment` now also carries `media: { kind: "image" | "video" | "gif", url } | null`
+- **Errors**: `400` — no text and no attachment, too long, more than 5 tags or an unknown tagged person, an oversize/unsupported/foreign-folder attachment, or a GIF link that isn't from GIPHY; `401`; `404` — post doesn't exist; `429`. A rejected request also deletes any file it referenced, and deleting a comment (or its post) deletes its file.
+
+### DELETE `/api/posts/{id}/comments/{commentId}`
+- **Auth**: Session required — the comment's author, or **Admin** (not HR)
+- **Success (200)**: `{ "data": { "id": "<deleted-uuid>" } }`
+- **Errors**: `401`; `403`; `404`
+
+### POST `/api/posts/{id}/reactions` · POST `/api/posts/{id}/comments/{commentId}/reactions`
+- **Auth**: Session required
+- **Body (JSON)**: `{ "emoji": "👍" }`
+- **Behavior**: adds the caller's reaction. Adding one they already have is a no-op success.
+- **Success (200)**: `{ "data": { "emoji": "👍" } }`
+- **Errors**: `400` — emoji not in the allowed set; `401`; `404` — post/comment doesn't exist
+
+### DELETE `/api/posts/{id}/reactions?emoji=👍` · DELETE `/api/posts/{id}/comments/{commentId}/reactions?emoji=👍`
+- **Auth**: Session required
+- **Behavior**: removes the caller's own reaction with that emoji. Succeeds even if there was none.
+- **Success (200)**: `{ "data": { "emoji": "👍" } }`
+- **Errors**: `400` — unknown emoji; `401`
+
+### POST `/api/posts/{id}/vote`
+- **Auth**: Session required
+- **Body (JSON)**: `{ "option_id": "uuid" }`
+- **Behavior**: casts or changes the caller's vote (one per person per poll). Votes are **not anonymous**.
+- **Success (200)**: `{ "data": { "post_id": "uuid", "option_id": "uuid" } }`
+- **Errors**: `400` — option isn't part of this poll; `401`
+
+---
+
+## 14. Notifications — `/api/notifications`
+
+In-app notifications, each readable only by its recipient (not even Admin). Created server-side for:
+the **tagged person** when a post, announcement, poll, kudos message or comment contains an `@tag`;
+the colleague **receiving kudos**; a **post's or comment's author when someone else comments on or
+reacts to it**; and a person **wished a happy birthday or work anniversary**. Nobody else is notified
+(no broadcast), and acting on your own content notifies no one. Reactions follow the same
+anti-spam rules as comments: while a person's earlier reaction alert on the same post (or comment)
+is unread they add no new one, and taking the reaction back withdraws an unread alert. If the author is
+also tagged in the comment they get just the tag notification; and while someone's earlier comment
+notification on a post is still unread, their further comments add no new one.
+There is no insert endpoint: notifications are written by the API through the service-role client,
+so a user can never forge one. They're deleted with their post/comment, and by the daily cleanup
+cron after 30 days.
+
+An `AppNotification` is:
+```json
+{
+  "id": "uuid",
+  "type": "mention",
+  "context": "poll",
+  "post_id": "uuid",
+  "comment_id": null,
+  "preview": "Which day works for the offsite, @Jane Doe?",
+  "read_at": null,
+  "created_at": "2026-10-08T09:30:00.000Z",
+  "actor": { "id": "uuid", "full_name": "Rahim Uddin", "designation": "Engineer", "avatar_url": null }
+}
+```
+`type` is `"mention" | "kudos" | "comment" | "reaction" | "wish"`; `context` is
+`"post" | "announcement" | "poll" | "kudos" | "comment" | "birthday" | "milestone"`. For `comment` and
+`reaction` it is the kind of post involved (or `"comment"` for a reaction on a comment); for `wish` it is
+the occasion. `emoji` is set for reactions. `post_id` is `null` for wishes, which instead carry
+`occasion_date` (the celebrated day) and open the wishes card at `/engagement?wishes={date}&occasion={context}`.
+The UI opens `/engagement/posts/{post_id}` (adding `?comment={comment_id}` for comment tags and comment notifications) — a page
+showing only that post, comments open, the tagged comment highlighted.
+
+### GET `/api/notifications`
+- **Auth**: Session required
+- **Query params**: `limit` (1–50, default 20), `before` (ISO timestamp, for the next page), `unread=1` (only unread — the Unread tab)
+- **Success (200)**: `{ "data": AppNotification[], "has_more": boolean, "unread_count": number }` — newest first
+- **Errors**: `401`, `500`
+
+### GET `/api/notifications/unread-count`
+- **Auth**: Session required
+- **Success (200)**: `{ "data": { "count": number } }` — what the navbar bell polls (every 60 s while the tab is visible, and on focus)
+
+### PATCH `/api/notifications/{id}`
+- **Auth**: Session required — marks one of **your own** notifications as read, or unread with body `{ "read": false }`. Someone else's id, or one already in that state, is a no-op success.
+- **Success (200)**: `{ "data": { "id": "uuid", "read": true } }`
+- **Errors**: `401`, `404` — not a valid id
+
+### DELETE `/api/notifications/{id}`
+- **Auth**: Session required — removes one of **your own** notifications from your list (someone else's id matches nothing)
+- **Success (200)**: `{ "data": { "id": "uuid" } }`
+- **Errors**: `401`, `404` — not a valid id
+
+**In the UI:** unread "commented on" and "reacted to" notifications about the same post (or comment), and
+wishes for the same celebration, collapse into one row ("Jane, Rahim and 2 others reacted to your post")
+that is read or removed as a unit — that
+grouping is done client-side, so the API still returns one row per comment. The bell also shows a
+toast ("Jane tagged you in a post · View") when a new one arrives while the app is open.
+
+### POST `/api/notifications/read-all`
+- **Auth**: Session required — marks all of your unread notifications as read
+- **Success (200)**: `{ "data": { "ok": true } }`
+
+---
+
+## 15. Celebration wishes — `/api/wishes`
+
+Wishes, comments and reactions on a **card**. Every celebration has one: a `birthday`, a work
+`milestone` (3, 5, 10, then every 5 years), an ordinary `anniversary` (any other year), or a
+`new_joiner` welcome card (open for 14 days after joining). Teammates sign it once each. **Birthdays are private:** the date of birth is stored in its own table readable only by
+its owner (never in `profiles`, never in the Directory or any API response), set from
+**Settings → Birthday**. Teammates only ever see the day and month of people who left sharing on,
+computed server-side. Anniversaries are counted from `profiles.joined_date`. A card is open on the day itself and for **3 days after** (new joiners: 14 days from joining).
+
+A wish is `{ id, recipient_id, occasion: "birthday" | "milestone", occasion_date, years, message, created_at, sender }`.
+
+### GET `/api/wishes?recipient={id}&occasion={birthday|milestone}&date={YYYY-MM-DD}`
+- **Auth**: Session required — everything on that celebration's card (visible to the whole team)
+- **Success (200)**: `{ "data": Wish[], "comments": CardComment[], "reactions": ReactionSummary[] }` — wishes newest first, comments oldest first. A `CardComment` is `{ id, content, created_at, author }`; comments may contain `@[Name](uuid)` tags
+- **Errors**: `400` — missing or malformed parameters; `401`
+
+### POST `/api/wishes`
+- **Auth**: Session required
+- **Body (JSON)**: `{ "recipient_id": "uuid", "occasion": "birthday", "occasion_date": "2026-10-08", "message": "1-200 characters" }`
+- **Behavior**: the server confirms it really is that person's birthday (they must be sharing it) or milestone anniversary, and that today is within the 3-day window, then writes the wish with the service-role client (wishes have no insert policy, so a client can never create one for a celebration that isn't happening) and notifies the recipient. One wish per sender per celebration.
+- **Success (201)**: `{ "data": Wish }`
+- **Errors**: `400` — wishing yourself, empty or over-long message, a day that isn't their birthday/anniversary, outside the 3-day window, a non-milestone year, someone not sharing a birthday (same message as "none on file", so it can't be used to probe), or a duplicate; `401`; `429` — rate limited
+
+### POST `/api/wishes/comments`
+- **Auth**: Session required. Comment on a card; works while the card is open (the day itself and 3 days after).
+- **Body (JSON)**: `{ "recipient_id": "uuid", "occasion": "birthday", "occasion_date": "2026-10-08", "content": "up to 500 displayed characters, may contain @[Name](uuid) tags (may be empty when media is set)", "media": CommentMediaInput | null }` — same one-small-attachment rule as post comments
+- **Behavior**: the celebrant is notified ("commented on your birthday card") unless they are the commenter or are tagged; anyone tagged is notified ("tagged you on a birthday card"). Written with the service-role client after the celebration is verified.
+- **Success (201)**: `{ "data": CardComment }`
+- **Errors**: `400` — no text and no attachment, too long, more than 5 tags or an unknown tagged person, a bad attachment, or the card is closed/not real (message starts "This card is closed."); `401`; `429`
+
+### DELETE `/api/wishes/comments/{id}`
+- **Auth**: Session required — the comment's author, or **Admin**
+- **Success (200)**: `{ "data": { "id": "uuid" } }`; **Errors**: `401`, `403`, `404`
+
+### POST / DELETE `/api/wishes/reactions/{recipient}/{occasion}/{date}`
+- **Auth**: Session required. `POST` body `{ "emoji": "🎉" }` adds your reaction (same allowed emoji set as posts; repeating is a no-op); `DELETE ?emoji=🎉` removes yours. Adding needs the card to be open; removing always works.
+- **Behavior**: the celebrant is notified ("reacted 🎉 to your birthday card"), with the same grouping and withdrawal rules as post reactions.
+- **Errors**: `400` — unknown emoji or closed card; `401`
+
+### DELETE `/api/wishes/{id}`
+- **Auth**: Session required — the sender, or **Admin** (every removal is written to the Audit Log)
+- **Success (200)**: `{ "data": { "id": "uuid" } }`
+- **Errors**: `401`; `403` — someone else's wish and the caller isn't Admin; `404`
+
+---
+
+## 16. GIF search — `/api/gifs`
+
+GIF search for comments, backed by **GIPHY** (Google shut Tenor's API down on 30 June 2026). The API
+key (`GIPHY_API_KEY`, server-only) is never sent to the browser. GIPHY's free key allows about **100
+calls per hour**, so each search (and the trending list) is cached on the server for an hour: the same
+query costs one call, not one per person. Results are G-rated.
+
+### GET `/api/gifs?q={text}&offset={n}`
+- **Auth**: Session required. `q` is optional (up to 50 characters); empty returns what's trending. `offset` pages through results (18 per page).
+- **Success (200)**: `{ "data": [{ "id", "title", "url", "preview", "width", "height" }], "next_offset": number | null }`
+- **Errors**: `401`; `429` — you are searching too fast; `502` — GIPHY is unavailable; `503` — no `GIPHY_API_KEY` is configured on the server, or GIPHY's hourly limit was hit
+
+---
+
 ## Quick reference table
 
 | Method | Endpoint | Auth | Purpose |
@@ -745,7 +983,29 @@ window and returns `{ "data": { "deleted": <count> } }`.
 | POST | `/api/overtime` | Session | Log overtime (self-entry only) |
 | PATCH | `/api/overtime/{id}` | Admin only (`status` body) or Session (owner, edit body) | Approve/reject a pending entry, or self-edit your own pending entry |
 | DELETE | `/api/overtime/{id}` | Session | Delete own pending overtime entry (or Admin) |
-| POST | `/api/admin/clear-database` | System Admin only | Wipe leave/holiday/attendance/overtime data (not accounts), then re-seed fresh leave balances |
+| GET | `/api/posts` | Session | List feed posts, or announcements with `?type=announcements`; filter `?kind=`, page with `?before=` — see §13 |
+| POST | `/api/posts` | Session (announcements: Admin/HR) | Create a post, announcement, kudos or poll, with optional photo/video attachments and @tags |
+| PATCH | `/api/posts/{id}` | Admin/HR | Pin or unpin an announcement |
+| DELETE | `/api/posts/{id}` | Session (author, or Admin) | Delete a post with its comments, reactions, poll data and attachments |
+| GET | `/api/posts/{id}/comments` | Session | List a post's comments |
+| POST | `/api/posts/{id}/comments` | Session | Comment on a post |
+| DELETE | `/api/posts/{id}/comments/{commentId}` | Session (author, or Admin) | Delete a comment |
+| POST / DELETE | `/api/posts/{id}/reactions` | Session | Add / remove your emoji reaction on a post |
+| POST / DELETE | `/api/posts/{id}/comments/{commentId}/reactions` | Session | Add / remove your emoji reaction on a comment |
+| POST | `/api/posts/{id}/vote` | Session | Vote in (or change your vote on) a poll |
+| GET | `/api/wishes` | Session | The wishes on one birthday / milestone card — see §15 |
+| POST | `/api/wishes` | Session | Sign a birthday or work-anniversary card (server verifies it is their day) |
+| DELETE | `/api/wishes/{id}` | Session (sender, or Admin) | Remove a wish |
+| GET | `/api/gifs` | Session | Search GIFs (GIPHY) for comments; trending when `q` is empty — see §16 |
+| POST | `/api/wishes/comments` | Session | Comment on a celebration card (supports @tags and one small photo / clip / GIF) |
+| DELETE | `/api/wishes/comments/{id}` | Session (author, or Admin) | Delete a card comment |
+| POST / DELETE | `/api/wishes/reactions/{recipient}/{occasion}/{date}` | Session | React to / un-react from a card |
+| GET | `/api/notifications` | Session | Your notifications (newest first, paged with `?before=`) plus `unread_count` — see §14 |
+| GET | `/api/notifications/unread-count` | Session | Your unread count (what the bell polls) |
+| PATCH | `/api/notifications/{id}` | Session | Mark one of your notifications read (or unread with `{ "read": false }`) |
+| DELETE | `/api/notifications/{id}` | Session | Remove one of your notifications |
+| POST | `/api/notifications/read-all` | Session | Mark all of your notifications as read |
+| POST | `/api/admin/clear-database` | System Admin only | Wipe leave/holiday/attendance/overtime/engagement data (including uploaded photos/videos) (not accounts), then re-seed fresh leave balances |
 | POST | `/api/admin/clear-audit-logs` | Admin only | Wipe all audit log history |
 | GET | `/api/signup-requests` | Admin only | List pending sign-up/access requests |
 | POST | `/api/signup-requests` | None (public) | Submit a self-service access request from `/signup` |
@@ -761,4 +1021,4 @@ window and returns `{ "data": { "deleted": <count> } }`.
 | POST | `/api/auth/logout` | Session | Revoke the caller's session — see §12 |
 | POST | `/api/auth/forgot-password` | None (public) | Check an email against real accounts and send a reset link — see §12 |
 | POST | `/api/auth/password-set` | Session (recovery link) | Log "joined" (first-ever password) or a password reset from `/reset-password` — see §12 |
-| GET | `/api/cron/audit-log-cleanup` | `CRON_SECRET` bearer token (Vercel Cron only) | Daily hard-delete of audit logs older than 10 days — see §11 |
+| GET | `/api/cron/audit-log-cleanup` | `CRON_SECRET` bearer token (Vercel Cron only) | Daily hard-delete of audit logs older than 10 days (and notifications older than 30) — see §11 |

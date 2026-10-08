@@ -17,6 +17,12 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:-translate-y-0.5 hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        // The confirm button of a delete dialog: solid red in both themes.
+        // (A className of bg-destructive can't do this on the default variant,
+        // because that variant paints a green gradient *image*, which sits on
+        // top of any background colour.)
+        "destructive-solid":
+          "bg-destructive text-destructive-foreground shadow-md shadow-destructive/25 hover:-translate-y-0.5 hover:bg-destructive/90 hover:shadow-lg hover:shadow-destructive/35 focus-visible:border-destructive/40 focus-visible:ring-destructive/30 active:translate-y-0",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",

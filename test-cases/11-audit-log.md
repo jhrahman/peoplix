@@ -65,24 +65,55 @@ right action label, and a comment that plainly describes what happened.
 | 28 | Check in for the day | Actor = the employee; action "Created"; comment mentions the date |
 | 29 | Check out | Actor = the employee; action "Updated"; comment mentions the date and the resulting duration (e.g. "8h 12m") |
 | 30 | Staff manually overrides another employee's check-in/out times | Actor = the staff member (not the employee whose record it is); comment names the employee and includes the resulting duration |
-| 30a | Manually correct only one of Check in/Check out, leaving the other unset | e.g. set Check in only, Check out remains empty | Comment shows "—" for the duration rather than a bogus/negative value |
+| 30a | Manually correct only one of Check in/Check out, leaving the other unset (e.g. set Check in only, Check out remains empty) | Comment shows "—" for the duration rather than a bogus/negative value |
 | 31 | Delete today's own attendance record | Actor = the employee; action "Deleted" |
 | 32 | Admin/HR creates a new employee | Actor = the creator; action "Created"; comment includes the new employee's name/email |
 | 33 | Admin/HR edits an employee's profile | Actor = the editor; action "Updated"; comment includes the employee's (possibly new) name |
 | 34 | Admin/HR deletes an employee | Actor = the deleter; action "Deleted"; comment includes the deleted employee's name/email |
 | 35 | Admin approves/rejects a sign-up request | Actor = the Admin; action "Approved"/"Rejected"; comment includes the requester's name/email |
-| 36 | Self-edit own profile in Settings, changing a single field | e.g. change only Department | Actor = self; action "Updated"; comment names the specific field, e.g. "Updated their department" |
-| 36a | Self-edit multiple profile fields in one save | e.g. change Full name and Mobile together | Comment names all changed fields, e.g. "Updated their name and mobile number" |
-| 36b | Click "Save changes" on the profile form without changing any field | No edits made | No new Audit Log entry is written for this save |
-| 36c | Upload or change a profile photo from Settings | Any valid image | Actor = self; action "Updated"; comment reads "Updated profile photo" |
-| 36d | Delete a profile photo from Settings | Account with an existing photo | Actor = self; action "Updated"; comment reads "Removed profile photo" |
+| 36 | Self-edit own profile in Settings, changing a single field (e.g. change only Department) | Actor = self; action "Updated"; comment names the specific field, e.g. "Updated their department" |
+| 36a | Self-edit multiple profile fields in one save (e.g. change Full name and Mobile together) | Comment names all changed fields, e.g. "Updated their name and mobile number" |
+| 36b | Click "Save changes" on the profile form without changing any field (No edits made) | No new Audit Log entry is written for this save |
+| 36c | Upload or change a profile photo from Settings (Any valid image) | Actor = self; action "Updated"; comment reads "Updated profile photo" |
+| 36d | Delete a profile photo from Settings (Account with an existing photo) | Actor = self; action "Updated"; comment reads "Removed profile photo" |
 | 37 | Change own password in Settings | Actor = self; action "Updated"; comment says password was changed |
 | 38 | Delete own account | Actor = self; entry is visible (check as Admin, since the account/actor no longer exists to view it as) — the actor's name/email still display correctly even after the account is gone |
-| 38a | A newly invited/approved employee opens the invite link and sets their password for the very first time | New account, first visit to `/reset-password` | Actor = the new employee; action **"Joined"**; comment reads exactly `"<their email> has been registered to the app"` |
-| 38b | That same employee later uses "Forgot password?" and resets their password again | Same account, second time through `/reset-password` | Actor = the employee; action **"Updated"** (not "Joined" again) — only the very first password set logs as "Joined" |
-| 38c | An existing employee (who has logged in normally before) uses "Forgot password?" from the login page | Existing account, `/reset-password` via the forgot-password link | Actor = the employee; action "Updated" — never "Joined", since this account already has a password set |
-| 38d | As Admin, filter/search the Audit Log for a "Joined" entry | Search box: the new employee's name or email | Entry appears with action "Joined" and the exact comment text from case 38a |
-| 38e | As the newly joined employee, open their own Audit Log | Their own account | Their "Joined" entry is visible to them, same as any of their other entries |
+| 38a | A newly invited/approved employee opens the invite link and sets their password for the very first time (New account, first visit to `/reset-password`) | Actor = the new employee; action **"Joined"**; comment reads exactly `"<their email> has been registered to the app"` |
+| 38b | That same employee later uses "Forgot password?" and resets their password again (Same account, second time through `/reset-password`) | Actor = the employee; action **"Updated"** (not "Joined" again) — only the very first password set logs as "Joined" |
+| 38c | An existing employee (who has logged in normally before) uses "Forgot password?" from the login page (Existing account, `/reset-password` via the forgot-password link) | Actor = the employee; action "Updated" — never "Joined", since this account already has a password set |
+| 38d | As Admin, filter/search the Audit Log for a "Joined" entry (Search box: the new employee's name or email) | Entry appears with action "Joined" and the exact comment text from case 38a |
+| 38e | As the newly joined employee, open their own Audit Log (Their own account) | Their "Joined" entry is visible to them, same as any of their other entries |
+| 38f | Publish an announcement (Admin/HR) (Announcement checkbox ticked) | Actor = the publisher; action "Created"; comment reads `Published a company announcement: “<first 70 characters>”` |
+| 38g | Post an ordinary update (Any role) | Actor = the poster; action "Created"; comment reads `Posted an update: “...”`; with attachments it ends `with 2 photos` / `with 1 photo` / `with 1 video` |
+| 38h | Give kudos (Kudos to Jane Doe for Teamwork) | Comment reads `Gave kudos to Jane Doe for Teamwork: “...”` |
+| 38i | Start a poll (Poll with 3 options) | Comment reads `Started a poll: “...” (3 options)` |
+| 38j | Delete your own post, announcement, kudos, or poll (Each type) | Action "Deleted"; comment reads `Deleted their own post: “...”` (or announcement / kudos post / poll) |
+| 38k | Admin deletes someone else's post (Another user's post) | Actor = the Admin; comment names the author, e.g. `Deleted Jane Doe's post: “...”` |
+| 38l | Pin and unpin an announcement (HR/Admin) | Action "Updated"; comments `Pinned an announcement: “...”` and `Unpinned an announcement: “...”` |
+| 38m | Comment on someone's post (Comment on Jane's poll) | Action "Created"; comment reads `Commented on Jane Doe's poll: “...”`; on your own post it reads `Commented on their own post: “...”` |
+| 38n | Delete your own comment (Own comment) | Comment reads `Deleted their own comment on Jane Doe's post: “...”` |
+| 38o | Admin deletes someone else's comment (Another user's comment) | Comment reads `Deleted Rahim Uddin's comment on Jane Doe's post: “...”` |
+| 38p | React to a post or comment (👍 on Jane's post / on Jane's comment) | Action "Created"; comments `Reacted 👍 to Jane Doe's post` and `Reacted 👍 to Jane Doe's comment`; on your own item `... to their own post` |
+| 38q | Remove a reaction (Click your 👍 chip again) | Action "Deleted"; comment reads `Removed their 👍 reaction from Jane Doe's post` |
+| 38r | Vote in a poll (First vote for "Pizza") | Action "Created"; comment reads `Voted “Pizza” in Jane Doe's poll` |
+| 38s | Change a vote (From "Pizza" to "Biryani") | Action "Updated"; comment reads `Changed their vote from “Pizza” to “Biryani” in Jane Doe's poll` |
+| 38t | Send a birthday wish (To Jane on her birthday) | Action "Created"; comment reads `Sent a birthday wish to Jane Doe: “...”`; a milestone reads `Sent a 5-year work anniversary wish to Jane Doe: “...”` |
+| 38u | Remove your own wish (Own wish) | Action "Deleted"; comment reads `Removed their birthday wish to Jane Doe: “...”` |
+| 38v | Admin deletes someone else's wish (Another user's wish) | Comment reads `Deleted Rahim Uddin's birthday wish to Jane Doe: “...”` |
+| 38w | Comment on a birthday / anniversary card (On Jane's card) | Comment reads `Commented on Jane Doe's birthday card: “...”` (work anniversary cards say `work anniversary card`) |
+| 38x | React to a card, then remove it (🎉 on the card) | Comments `Reacted 🎉 to Jane Doe's birthday card` and `Removed their 🎉 reaction from Jane Doe's birthday card` |
+| 38y | Delete a card comment (own, and as Admin for someone else's) (Card comments) | Comments `Deleted their own comment on Jane Doe's birthday card: “...”` and `Deleted Rahim Uddin's comment on Jane Doe's birthday card: “...”` |
+| 38z | Save a date of birth in Settings (Any employee) | Comment reads "Updated their date of birth" (the date itself is never recorded) |
+| 38aa | Remove a date of birth in Settings (Employee with a saved birthday) | Comment reads "Removed their date of birth" |
+| 38ab | Change the joining date in Settings (From 2024-02-01 to 2021-03-15) | Comment reads `Updated their joining date from 2024-02-01 to 2021-03-15` (unlike a birthday, joining dates are recorded) |
+| 38ac | Save Settings without changing the joining date (Other fields only) | No joining-date entry is written |
+| 38ah | Comment with a GIF, photo or video (Comment with text + GIF; GIF only) | Comment reads `Commented on Jane Doe's post: “text” [GIF]` and `...: [GIF]` (also `[photo]` / `[video]`); on a card it reads `Commented on Jane Doe's birthday card: ...` |
+| 38ai | Delete a comment that had an attachment (Own comment with a photo) | Comment reads `Deleted their own comment on Jane Doe's post: “...” [photo]` |
+| 38aj | Wish and comment on anniversary and welcome cards (4-year anniversary, new joiner) | Comments read `Sent a 4-year work anniversary wish to Jane Doe: “...”`, `Sent a welcome message to Jane Doe: “...”`, `Commented on Jane Doe's welcome card: ...`; reactions read `...to Jane Doe's work anniversary card` |
+| 38ad | Repeat an action that changes nothing (Add a reaction you already have; vote for the option you already chose; remove a reaction you don't have) | **No** Audit Log entry is written for these no-ops |
+| 38ae | An action that is rejected (Over-long post, invalid wish, forbidden delete) | No Audit Log entry is written (only things that actually happened are logged) |
+| 38af | Check who sees engagement entries (As Employee and as Admin) | Employees see only their own engagement entries; Admin sees everyone's, and the search box finds them by text (for example by a name or an emoji) |
+| 38ag | Look at the volume after heavy activity (Many reactions in a short time) | Entries stay readable and ordered by time; they age out with everything else after 10 days |
 
 ## Resilience
 

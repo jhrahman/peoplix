@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateOwnProfile } from "@/lib/actions/profile";
+import { todayInDhaka } from "@/lib/attendance";
 import type { Profile } from "@/lib/types";
 
 export function ProfileForm({ profile }: { profile: Profile }) {
@@ -58,6 +59,25 @@ export function ProfileForm({ profile }: { profile: Profile }) {
             data-testid="settings-designation"
           />
         </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="joined_date">Joining date</Label>
+        <Input
+          id="joined_date"
+          name="joined_date"
+          type="date"
+          min="1970-01-01"
+          max={todayInDhaka()}
+          defaultValue={profile.joined_date}
+          required
+          className="sm:max-w-56"
+          aria-describedby="joined_date_note"
+          data-testid="settings-joined-date"
+        />
+        <p id="joined_date_note" className="text-xs text-muted-foreground" data-testid="settings-joined-date-note">
+          Not sure of the exact date? Ask HR for your confirmed joining date. Your work anniversaries
+          and the 3, 5 and 10 year milestones are counted from it.
+        </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="phone">Mobile</Label>

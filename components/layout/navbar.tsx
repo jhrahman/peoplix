@@ -1,8 +1,10 @@
+import Link from "next/link";
 import type { Profile } from "@/lib/types";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Logo } from "@/components/layout/logo";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { cn } from "@/lib/utils";
 
 export function Navbar({ profile }: { profile: Profile }) {
@@ -21,9 +23,17 @@ export function Navbar({ profile }: { profile: Profile }) {
     >
       <div className="flex items-center gap-2">
         <MobileNav role={profile.role} />
-        <Logo className="md:hidden" iconClassName="size-6 -mr-[8px]" id="navbar" />
+        <Link
+          href="/"
+          aria-label="Peoplix home"
+          data-testid="logo-link-navbar"
+          className="rounded-lg transition-opacity duration-200 outline-none hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/50 md:hidden"
+        >
+          <Logo iconClassName="size-6 -mr-[8px]" id="navbar" />
+        </Link>
       </div>
       <div className="flex items-center gap-2">
+        <NotificationBell />
         <ThemeToggle />
         <UserMenu profile={profile} />
       </div>

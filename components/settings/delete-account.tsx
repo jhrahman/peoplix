@@ -96,7 +96,7 @@ export function DeleteAccount() {
                   handleDelete();
                 }}
                 disabled={!canConfirm || loading}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                variant="destructive-solid"
                 data-testid="delete-account-confirm-button"
               >
                 {loading ? "Deleting Account..." : "Delete Account"}

@@ -63,13 +63,14 @@ The Danger Zone is restricted to a single, hardcoded **System Admin** account
 
 | # | Action | Test Data | Expected Result |
 |---|--------|-----------|------------------|
-| 12 | As the System Admin, click "Clear Database" | N/A | Confirmation dialog opens warning that leave requests, balances, holidays, attendance, and overtime records will be permanently deleted, and that accounts are never touched |
+| 12 | As the System Admin, click "Clear Database" | N/A | Confirmation dialog opens warning that leave requests, balances, holidays, attendance, overtime records, and every engagement post, comment, and reaction will be permanently deleted, and that accounts are never touched |
 | 13 | In the confirmation dialog, leave the confirmation input empty and try to confirm | Confirmation input: (blank) | "Clear Database" action button in the dialog remains disabled |
 | 14 | Type an incorrect confirmation phrase | Input: "delete all data" (wrong case) or "DELETE" (incomplete) | Action button remains disabled; phrase must match exactly |
 | 15 | Type the exact required phrase "DELETE ALL DATA" | Input: `DELETE ALL DATA` | Action button becomes enabled |
 | 16 | Click "Cancel" instead of confirming | N/A | Dialog closes; no data is deleted; confirmation input resets |
 | 17 | Confirm the clear-database action with the correct phrase | Confirm click | All leave requests, leave balances, holidays, attendance, and overtime records are deleted — including attendance history belonging to **other** employees, not just the System Admin's own — accounts and profiles remain fully intact and able to log in |
-| 18 | After clearing, revisit the Dashboard, Leave, Holidays, Attendance, and Overtime pages | N/A | Each page shows correct empty states for holidays/attendance/overtime (no stale data, no errors); the Leave page's "All balances" table shows every current employee with a fresh 10/14/15 balance immediately, not an empty table |
+| 18 | After clearing, revisit the Dashboard, Leave, Holidays, Attendance, Overtime, and Engagement pages | N/A | Each page shows correct empty states for holidays/attendance/overtime and for the Engagement feed and announcements (no stale data, no errors); the Leave page's "All balances" table shows every current employee with a fresh 10/14/15 balance immediately, not an empty table |
+| 18b | Before clearing, create posts, comments, reactions, a poll with votes, and a post with photos and a video | Several engagement items from different accounts, including uploaded files | After Clear Database, `/engagement` is empty, related notifications are gone, and the uploaded files no longer exist in the `post-images` and `post-videos` Storage buckets (the cleanup covers files, not only database rows) |
 | 18a | Before clearing, note an attendance history entry belonging to an employee other than the System Admin | e.g. another employee's past check-in/out row | After confirming Clear Database, that row is gone too — not just the System Admin's own **today's** row (attendance's normal delete rule only allows deleting your own today's row, but this action is exempt from that since it uses a service-role bypass) |
 | 19 | After clearing, use "Generate default BD holidays" on the Holidays page to recover | N/A | Default holiday set is restored successfully |
 | 20 | Trigger "Clear Database" a second time immediately after a successful clear | Repeat steps 12–17 | Operation completes without error even with already-empty tables (idempotent) |
@@ -96,7 +97,7 @@ page itself (viewing, search, date filter, retention), see
 |---|--------|-----------|------------------|
 | 21 | Log in as an Employee and scroll to the "Delete Account" section | Valid Employee account | "Delete Account" button is visible and enabled (unlike Clear Database, this is not Admin-only) |
 | 22 | Log in as HR or Admin and view the "Delete Account" section | Valid HR/Admin account | Button is equally visible and enabled for every role |
-| 23 | Click "Delete Account" | N/A | Confirmation dialog opens warning that the account and all associated data (leave requests, balances, attendance, overtime records) will be permanently deleted |
+| 23 | Click "Delete Account" | N/A | Confirmation dialog opens warning that the account and all associated data (leave requests, balances, attendance, overtime records) will be permanently deleted, along with their posts, comments, and reactions |
 | 24 | In the confirmation dialog, leave the confirmation input empty and try to confirm | Confirmation input: (blank) | "Delete Account" action button in the dialog remains disabled |
 | 25 | Type an incorrect confirmation phrase | Input: "delete my account" (wrong case) or "DELETE" (incomplete) | Action button remains disabled; phrase must match exactly |
 | 26 | Type the exact required phrase "DELETE MY ACCOUNT" | Input: `DELETE MY ACCOUNT` | Action button becomes enabled |
@@ -110,5 +111,64 @@ page itself (viewing, search, date filter, retention), see
 | 29 | Attempt to log back in with the deleted account's credentials | Same email/password used in step 28 | Login fails — the account no longer exists |
 | 30 | As Admin, check the Employees list after another role's account self-deletes | N/A | The deleted account no longer appears in the Employees directory (profile row cascaded on delete) |
 | 31 | Confirm cascade cleanup after a self-delete | Account had leave requests, attendance, and/or overtime records before deleting | Those records no longer appear anywhere (e.g. staff "all" views) — deleted via `on delete cascade`, not left orphaned |
+| 31a | Confirm engagement cleanup after a self-delete | Account had posts, comments, reactions, poll votes, notifications, and uploaded photos/videos | Their posts and comments disappear from `/engagement`, their reactions and votes are removed from the counts, notifications involving them are gone, and their files are removed from the `post-images` and `post-videos` Storage buckets |
 | 32 | Attempt to trigger `DELETE /api/account` directly without a session (e.g. via dev tools/API client, logged out) | No session/cookie | Server rejects the request (`401`) |
 | 33 | Log in as a protected account (see `lib/protected-employees.ts`) and attempt self-deletion | Protected account's session | Server rejects the request (`403`), independent of the client-side dialog |
+
+## Birthday (date of birth)
+
+> Privacy is the point of this section: the date of birth is stored in its own table that only its
+> owner can read. Teammates only ever see the day and month, never the year, and only while sharing
+> is on. See [`12-engagement.md`](12-engagement.md) § Birthdays & wishes for how it is used.
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 34 | Open Settings as each role | Employee, HR, Admin | A "Birthday" card is present for every role, with a date field, a "Let teammates celebrate my birthday" checkbox (ticked by default), a privacy note, and a disabled "Save birthday" button |
+| 35 | Open the date picker | Click the date field | Dates later than today cannot be chosen; dates before 1900 cannot be chosen |
+| 36 | Pick a valid date of birth and save | e.g. 1994-03-15 | Button shows "Saving..."; toast "Birthday saved."; the button becomes disabled again (nothing left to save) and a "Remove" button appears |
+| 37 | Reload Settings | After saving | The saved date and checkbox state are still shown |
+| 38 | Change only the checkbox and save | Untick sharing | "Save birthday" enables on the change; saving succeeds; the date is unchanged |
+| 39 | Try to save a date in the future by API or by editing the form | Tomorrow's date | Rejected with "Date of birth can't be in the future" |
+| 40 | Try to save an implausible age | Date making the person 10 or 150 years old | Rejected with "Enter a valid date of birth" |
+| 41 | Click "Remove" | After saving | Toast "Birthday removed."; the field empties, the checkbox returns to ticked, and the "Remove" button disappears |
+| 42 | Check the Team Directory after saving a birthday | Any role, `/directory` | No date of birth, age, or birthday appears anywhere in the table or its search results |
+| 43 | Check the Employees page and `GET /api/employees` after saving a birthday | Admin/HR | No date of birth appears in the list, the edit dialog, or the API response |
+| 44 | Read another person's birthday through the database REST endpoint | `GET /rest/v1/employee_birthdays` with a different employee's token | Only your own row is returned; other people's rows are never visible, even to Admin or HR |
+| 45 | Try to write someone else's birthday through the database REST endpoint | `POST`/`PATCH` with another `employee_id` | Rejected by Row Level Security |
+| 46 | Check that no profile response includes a birthday | `GET /api/auth/me`, `GET /api/employees/{id}`, the Directory page source | None of them contain `date_of_birth` |
+| 47 | Save a birthday, then check the Audit Log | `/audit-log` | An entry "Updated their date of birth" is recorded; the date itself is never written to the log |
+| 48 | Remove a birthday, then check the Audit Log | `/audit-log` | An entry "Removed their date of birth" is recorded |
+| 49 | Delete the account of someone who set a birthday | Disposable account | Their birthday row is removed with the account |
+
+## Joining date
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 50 | Open Settings as each role | Employee, HR, Admin | "Your profile" shows a "Joining date" field with the current date, below Department/Designation |
+| 51 | Read the note under the field | N/A | It says to ask HR for the confirmed joining date and that anniversaries and the 3, 5 and 10 year milestones are counted from it |
+| 52 | Open the date picker | Click the field | Dates in the future cannot be chosen; dates before 1970 cannot be chosen |
+| 53 | Change the date and click "Save changes" | e.g. 2021-03-15 | Toast "Profile updated."; reloading Settings shows the new date; the Dashboard role card shows it too |
+| 54 | Save without changing the joining date | Edit another field only | Joining date unchanged and no joining-date audit entry |
+| 55 | Clear the field and save | Empty date | The browser blocks the submit (the field is required) |
+| 56 | Try a future date by editing the form or calling the action directly | Tomorrow | Rejected with "Joining date can't be in the future" |
+| 57 | Try an implausible date | 1900-01-01 or "abc" | Rejected with "Enter a valid joining date" |
+| 58 | Check the Audit Log after changing it | `/audit-log` | Entry "Updated their joining date from <old> to <new>" |
+| 59 | See the effect on Celebrations | Set exactly 5 years ago | The Engagement page lists a 5-year milestone for you (see `12-engagement.md` rows 260 to 265) |
+| 60 | HR or Admin edits the same person on the Employees page | Staff session | Unaffected by this change; both can still manage employees as before |
+
+## Role protection
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 61 | As an Employee, try to change your own role through the database REST endpoint | `PATCH /rest/v1/profiles?id=eq.<you>` with `{ "role": "admin" }` | Rejected with an error ("Only HR or Admin can change a role"); the role is unchanged |
+| 62 | As an Employee, update your name and phone the normal way | Settings form | Still works (only role changes are blocked) |
+| 63 | As HR/Admin, change an employee's role from the Employees page | Staff session | Still works as before
+
+## Clear Database and celebration data
+
+| # | Action | Test Data | Expected Result |
+|---|--------|-----------|------------------|
+| 64 | Before clearing, create wishes, card comments (one with a photo), and card reactions on a few cards | Several accounts | Data exists on the cards |
+| 65 | Run Clear Database as the System Admin | Confirm | Wishes, card comments, card reactions, and all notifications are gone; the Celebrations list still shows who is celebrating (that comes from profiles) but every card is empty |
+| 66 | Check Storage afterwards | `comment-images`, `comment-videos`, `post-images`, `post-videos` buckets | The photos and clips from post comments and card comments are removed as well as post attachments |
+| 67 | Check that birthdays survive | Settings → Birthday of an employee who saved one | Dates of birth are personal profile data, not engagement content, so they are **not** cleared |

@@ -56,7 +56,9 @@ export function DangerZone() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Wipes all leave requests, leave balances, holidays, attendance, and overtime records.
+          Wipes all leave requests, leave balances, holidays, attendance, overtime records, and
+          engagement content (posts, comments, reactions, and birthday and anniversary cards, with
+          their photos and videos), plus notifications.
           Employee, HR, and Admin accounts are never touched.
         </p>
 
@@ -72,7 +74,8 @@ export function DangerZone() {
               <AlertDialogTitle>Clear all data?</AlertDialogTitle>
               <AlertDialogDescription>
                 This permanently deletes every leave request, leave balance, holiday,
-                attendance, and overtime record. This cannot be undone. Type{" "}
+                attendance, and overtime record, plus every engagement post, comment, reaction,
+                card, and notification, with their photos and videos. This cannot be undone. Type{" "}
                 <span className="font-mono font-semibold text-foreground">{CONFIRM_PHRASE}</span>{" "}
                 to confirm.
               </AlertDialogDescription>
@@ -101,7 +104,7 @@ export function DangerZone() {
                   handleClear();
                 }}
                 disabled={!canConfirm || loading}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                variant="destructive-solid"
                 data-testid="danger-zone-confirm-button"
               >
                 {loading ? "Clearing..." : "Clear Database"}

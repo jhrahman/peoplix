@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isProtectedEmployee } from "@/lib/protected-employees";
 import { logAudit } from "@/lib/audit";
+import { removeAllUserMedia } from "@/lib/engagement-storage";
 import type { Profile } from "@/lib/types";
 
 export async function DELETE() {
@@ -49,6 +50,10 @@ export async function DELETE() {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
+
+  // Their posts cascaded away with the profile; the uploaded photos/videos
+  // are separate Storage objects and need removing explicitly.
+  await removeAllUserMedia(user.id);
 
   await supabase.auth.signOut();
 
